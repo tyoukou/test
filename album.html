@@ -1,39 +1,153 @@
-<!DOCTYPE html>
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>打开相册选择图片</title>
+    <title>模擬テスト</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        .phone-container {
+            width: 360px;
+            height: 640px;
+            background-color: #ffffff;
+            border: 2px solid #333;
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.3);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            background-color: #4CAF50;
+            color: white;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #preview {
+            max-width: 100%;
+            max-height: 400px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        #downloadBtn {
+            display: none;
+        }
+        input[type="file"] {
+            display: none;
+        }
+    </style>
 </head>
 <body>
-    <button onclick="openAlbum()">打开相册</button>
-    <br>
-    <img id="preview" style="max-width: 300px; display: none;" alt="图片预览">
+    <div class="phone-container">
+        <h2>照片处理</h2>
+        <div class="button-group">
+            <button onclick="openCamera()">カメラ</button>
+            <button onclick="openGallery()">アルバム</button>
+        </div>
+        <img id="preview" alt="プレビュー">
+        <button id="downloadBtn" onclick="downloadImage()">ダウンロード</button>
+        <input type="file" id="cameraInput" accept="image/*" capture="environment">
+        <input type="file" id="galleryInput" accept="image/*">
+    </div>
 
     <script>
-        function openAlbum() {
-            const input = document.createElement('input');
-            input.type = 'file';
-            input.accept = 'image/*'; 
-            input.style.display = 'none'; 
+        let currentImageData = null;
 
-            input.onchange = (event) => {
-                const file = event.target.files[0]; 
-                if (file) {
-                    const reader = new FileReader();
-                    reader.onload = (e) => {
-                        const img = document.getElementById('preview');
-                        img.src = e.target.result; 
-                        img.style.display = 'block'; 
-                    };
-                    reader.readAsDataURL(file);
-                }
-            };
-
-            document.body.appendChild(input);
-            input.click();
-            document.body.removeChild(input); 
+        function openCamera() {
+            document.getElementById('cameraInput').click();
         }
+
+        function openGallery() {
+            document.getElementById('galleryInput').click();
+        }
+
+        function handleImageInput(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const preview = document.getElementById('preview');
+                    preview.src = e.target.result;
+                    preview.style.display = 'block';
+                    currentImageData = e.target.result;
+                    document.getElementById('downloadBtn').style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function downloadImage() {
+            if (currentImageData) {
+                const link = document.createElement('a');
+                link.href = currentImageData;
+                link.download = 'photo_' + new Date().getTime() + '.jpg';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+        }
+
+        document.getElementById('cameraInput').addEventListener('change', handleImageInput);
+        document.getElementById('galleryInput').addEventListener('change', handleImageInput);
     </script>
 </body>
 </html>
