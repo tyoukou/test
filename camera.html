@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>摄像头视频流</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-family: Arial, sans-serif;
+        }
+        video {
+            width: 640px;
+            height: 480px;
+            border: 2px solid #333;
+            margin-bottom: 10px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1>摄像头视频流示例</h1>
+    <video id="video" autoplay></video>
+    <button id="startButton">打开摄像头</button>
+    <button id="stopButton" disabled>关闭摄像头</button>
+
+    <script>
+        const video = document.getElementById('video');
+        const startButton = document.getElementById('startButton');
+        const stopButton = document.getElementById('stopButton');
+        let stream = null;
+
+        // 打开摄像头
+        async function startCamera() {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({
+                    video: true,
+                    audio: false
+                });
+                video.srcObject = stream;
+                startButton.disabled = true;
+                stopButton.disabled = false;
+            } catch (err) {
+                console.error('无法访问摄像头: ', err);
+                alert('无法访问摄像头，请检查权限或设备');
+            }
+        }
+
+        // 关闭摄像头
+        function stopCamera() {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                video.srcObject = null;
+                stream = null;
+                startButton.disabled = false;
+                stopButton.disabled = true;
+            }
+        }
+
+        // 绑定按钮事件
+        startButton.addEventListener('click', startCamera);
+        stopButton.addEventListener('click', stopCamera);
+    </script>
+</body>
+</html>
