@@ -138,10 +138,10 @@
 
         function downloadImage() {
             if (window.Android) { 
-                var msg = window.Android.sendImageBytes(currentImageData);
+                var msg = window.Android.sendImage(currentImageData);
                 alert('window.Android：' + msg);
             } else if (window.webkit && window.webkit.messageHandlers) {
-                window.webkit.messageHandlers.sendImageBytes.postMessage(currentImageData);
+                window.webkit.messageHandlers.sendImage.postMessage(currentImageData);
             }       
         }
 
