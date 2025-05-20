@@ -143,7 +143,9 @@
                 window.webkit.messageHandlers.sendImage.postMessage(currentImageData);
             }       
         }
-
+        function showmsg(msg) {
+            alert('xx_showmsg_showmsg：' + msg);      
+        }
         document.getElementById('cameraInput').addEventListener('change', handleImageInput);
         document.getElementById('galleryInput').addEventListener('change', handleImageInput);
     </script>
