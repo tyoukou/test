@@ -38,17 +38,24 @@
 
         // 打开摄像头
         async function startCamera() {
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                console.error('getUserMedia 不受支持');
+                alert('此环境不支持摄像头访问，请尝试在浏览器中打开');
+                return;
+            }
+        
             try {
-                stream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: "environment" },
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: "environment" }, // 指定后置摄像头
                     audio: false
                 });
+                const video = document.querySelector('video');
                 video.srcObject = stream;
-                startButton.disabled = true;
-                stopButton.disabled = false;
+                document.getElementById('startButton').disabled = true;
+                document.getElementById('stopButton').disabled = false;
             } catch (err) {
-                console.error('无法访问摄像头: ', err);
-                alert('无法访问摄像头，请检查权限或设备');
+                console.error('无法访问后置摄像头: ', err);
+                alert('无法访问后置摄像头，请检查权限或设备：' + err.message);
             }
         }
 
