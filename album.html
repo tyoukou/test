@@ -138,8 +138,7 @@
 
         function downloadImage() {
             if (window.Android) { 
-                var msg = window.Android.sendImage(currentImageData);
-                alert('window.Android：' + msg);
+                window.Android.sendImage(currentImageData);
             } else if (window.webkit && window.webkit.messageHandlers) {
                 window.webkit.messageHandlers.sendImage.postMessage(currentImageData);
             }       
