@@ -63,12 +63,14 @@
         <div class="button-group">
             <button onclick="openCamera()">カメラ</button>
             <button onclick="openGallery()">アルバム</button>
+            <button onclick="window.Android.startSpeechRecognition()">オーディオ</button>
         </div>
+        <p>Recognized Text: <span id="previewText">Waiting for speech...</span></p>
         <img id="preview" alt="プレビュー">
         <button id="downloadBtn" onclick="downloadImage()">ダウンロード</button>
         
-        <input type="file" id="cameraInput" accept=".camera" capture="environment">
-        <input type="file" id="galleryInput" accept="image/*,.rear-camera" capture="user">
+        <input type="file" id="cameraInput" capture="environment">
+        <input type="file" id="galleryInput" accept="image/*">
     </div>
 
     <script>
@@ -106,7 +108,7 @@
             }       
         }
         function showmsg(msg) {
-            alert('native message：' + msg);      
+            document.getElementById('previewText').innerText = text || 'No speech recognized';     
         }
         document.getElementById('cameraInput').addEventListener('change', handleImageInput);
         document.getElementById('galleryInput').addEventListener('change', handleImageInput);
