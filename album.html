@@ -124,7 +124,7 @@
         function handleImageInput(event) {
             const file = event.target.files[0];
             if (file) {
-                alert('relative path:', file.webkitRelativePath);
+               
                 const reader = new FileReader();
                 reader.onload = function(e) {
                     const preview = document.getElementById('preview');
@@ -145,7 +145,7 @@
             }       
         }
         function showmsg(msg) {
-            alert('xx_showmsg_showmsg：' + msg);      
+            alert('native message：' + msg);      
         }
         document.getElementById('cameraInput').addEventListener('change', handleImageInput);
         document.getElementById('galleryInput').addEventListener('change', handleImageInput);
