@@ -124,6 +124,7 @@
         function handleImageInput(event) {
             const file = event.target.files[0];
             if (file) {
+                alert('relative path:', file.webkitRelativePath);
                 const reader = new FileReader();
                 reader.onload = function(e) {
                     const preview = document.getElementById('preview');
