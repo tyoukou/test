@@ -62,7 +62,7 @@
         <h2>写真処理</h2>
         <div class="button-group">
             <button onclick="window.Android.startNativeCamera()">カメラ</button>
-            <button onclick="openGallery()">アルバム</button>
+            <button onclick="window.Android.startNativeAlbum()">アルバム</button>
             <button onclick="window.Android.startSpeechRecognition()">オーディオ</button>
         </div>
         <p>Recognized Text: <span id="previewText">Waiting for speech...</span></p>
@@ -73,26 +73,6 @@
 
     <script>
         let currentImageData = null;
-
-        function openGallery() {
-            document.getElementById('galleryInput').click();
-        }
-
-        function handleImageInput(event) {
-            const file = event.target.files[0];
-            if (file) {
-               
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const preview = document.getElementById('preview');
-                    preview.src = e.target.result;
-                    preview.style.display = 'block';
-                    currentImageData = e.target.result;
-                    document.getElementById('downloadBtn').style.display = 'block';
-                };
-                reader.readAsDataURL(file);
-            }
-        }
 
         function downloadImage() {
             if (window.Android) { 
@@ -108,7 +88,7 @@
             const preview = document.getElementById('preview');
             preview.src = uri;
             preview.style.display = 'block';
-            currentImageData = e.target.result;
+            currentImageData = uri;
             document.getElementById('downloadBtn').style.display = 'block';
         }        
 
