@@ -102,7 +102,7 @@
 
         function downloadImage() {
             if (window.Android) { 
-                window.Android.sendImage(currentImageData);
+                window.Android.saveImage(currentImageData);
             } else if (window.webkit && window.webkit.messageHandlers) {
                 window.webkit.messageHandlers.sendImage.postMessage(currentImageData);
             }       
