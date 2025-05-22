@@ -60,6 +60,11 @@
 <body>
     <div class="phone-container">
         <h2>写真処理</h2>
+        <div class="phone-container">
+            <input type="file" accept=".camera" id="cameraInput">
+            <input type="file" accept=".album" id="albumInput">
+            <img id=" photo" style="display:none;" />
+        </div>        
         <div class="button-group">
             <button onclick="window.Android.startNativeCamera()">カメラ</button>
             <button onclick="window.Android.startNativeAlbum()">アルバム</button>
@@ -74,8 +79,20 @@
     </div>
 
     <script>
-        let currentImageData = null;
+        function showPicture(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const img = document.getElementById('photo');
+                img.src = URL.createObjectURL(file);
+                img.style.display = 'block';
+            }
+        }
+        document.getElementById('cameraInput').addEventListener('change', showPicture);
+        document.getElementById('albumInput').addEventListener('change', showPicture);
 
+    </script>
+    <script>
+        let currentImageData = null;
         function downloadImage() {
             if (window.Android) { 
                 window.Android.saveImage(currentImageData);
