@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -14,6 +15,7 @@
             margin: 0;
             background-color: #f0f0f0;
         }
+
         .phone-container {
             width: 360px;
             height: 640px;
@@ -21,16 +23,18 @@
             border: 2px solid #333;
             border-radius: 20px;
             padding: 20px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.3);
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
             display: flex;
             flex-direction: column;
             align-items: center;
         }
+
         .button-group {
             display: flex;
             gap: 10px;
             margin-bottom: 20px;
         }
+
         button {
             padding: 10px 20px;
             font-size: 16px;
@@ -40,21 +44,24 @@
             background-color: #4CAF50;
             color: white;
         }
+
         button:hover {
             background-color: #45a049;
         }
+
         #preview {
             max-width: 100%;
             max-height: 400px;
             margin-bottom: 20px;
             display: none;
         }
+
         #downloadBtn {
             display: none;
         }
-
     </style>
 </head>
+
 <body>
     <h2>写真処理</h2>
     <div class="phone-container">
@@ -77,36 +84,29 @@
     </div>
 
     <script>
-
-    <script>
-        function showPicture(event) {
-            const file = event.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const img = document.getElementById('photo');
-                    img.src = e.target.result;
-                    img.style.display = 'block';
-                };
-                reader.readAsDataURL(file);
-            }
-        }
-
-        document.getElementById('cameraInput').addEventListener('change', showPicture);
-        document.getElementById('albumInput').addEventListener('change', showPicture);
-
-    </script>
-    <script>
         let currentImageData = null;
+        function showPicture(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    const img = document.getElementById('photo');
+                    img.src = e.target.result;
+                    img.style.display = 'block';
+                    currentImageData = uri;
+                };
+                reader.readAsDataURL(file);
+            }
+        }
         function downloadImage() {
-            if (window.Android) { 
+            if (window.Android) {
                 window.Android.saveImage(currentImageData);
             } else if (window.webkit && window.webkit.messageHandlers) {
                 window.webkit.messageHandlers.sendImage.postMessage(currentImageData);
-            }       
+            }
         }
         function showText(text) {
-            document.getElementById('previewText').innerText = text || 'No speech recognized';     
+            document.getElementById('previewText').innerText = text || 'No speech recognized';
         }
         function showImage(uri) {
             const preview = document.getElementById('preview');
@@ -114,9 +114,12 @@
             preview.style.display = 'block';
             currentImageData = uri;
             document.getElementById('downloadBtn').style.display = 'block';
-        }        
-
+        }
+        
+        document.getElementById('cameraInput').addEventListener('change', showPicture);
+        document.getElementById('albumInput').addEventListener('change', showPicture);
         document.getElementById('galleryInput').addEventListener('change', handleImageInput);
     </script>
 </body>
+
 </html>
