@@ -77,14 +77,21 @@
     </div>
 
     <script>
-        function showPicture(event) {
-            const file = event.target.files[0];
-            if (file) {
-                const img = document.getElementById('photo');
-                img.src = URL.createObjectURL(file);
-                img.style.display = 'block';
-            }
-        }
+
+    <script>
+        function showPicture(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = document.getElementById('photo');
+                    img.src = e.target.result;
+                    img.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
         document.getElementById('cameraInput').addEventListener('change', showPicture);
         document.getElementById('albumInput').addEventListener('change', showPicture);
 
