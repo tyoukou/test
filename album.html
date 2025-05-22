@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -66,20 +65,16 @@
     <h2>写真処理</h2>
     <div class="phone-container">
         <input type="file" id="cameraInput" capture="enviroment">
-        <input type="file" id="albumInput">
-        <img id="photo" style="display:none;" />
-    </div>
-    <div class="phone-container">
+        <input type="file" id="albumInput">             
         <div class="button-group">
             <button onclick="window.Android.startNativeCamera()">カメラ</button>
             <button onclick="window.Android.startNativeAlbum()">アルバム</button>
             <button onclick="window.Android.startSpeechRecognition()">オーディオ</button>
         </div>
-        <p>Recognized Text: <span id="previewText">Waiting for speech...</span></p>
+        <p>★ <span id="previewText">Waiting for speech...</span></p>
         <img id="preview" alt="プレビュー">
         <img src="https://cdn.pixabay.com/photo/2024/05/26/10/15/bird-8788491_1280.jpg" width="60">
-
-        <button id="downloadBtn" onclick="downloadImage()">保存</button>
+        <button id="downloadBtn" onclick="saveImage()">保存</button>
     </div>
 
     <script>
@@ -89,24 +84,16 @@
             if (file) {
                 const reader = new FileReader();
                 reader.onload = function (e) {
-                    const img = document.getElementById('photo');
+                    const img = document.getElementById('preview');
                     img.src = e.target.result;
                     img.style.display = 'block';
                     currentImageData = e.target.result;
+                    document.getElementById('downloadBtn').style.display = 'block';
                 };
                 reader.readAsDataURL(file);
             }
         }
-        function downloadImage() {
-            if (window.Android) {
-                window.Android.saveImage(currentImageData);
-            } else if (window.webkit && window.webkit.messageHandlers) {
-                window.webkit.messageHandlers.sendImage.postMessage(currentImageData);
-            }
-        }
-        function showText(text) {
-            document.getElementById('previewText').innerText = text || 'No speech recognized';
-        }
+
         function showImage(uri) {
             const preview = document.getElementById('preview');
             preview.src = uri;
@@ -114,7 +101,19 @@
             currentImageData = uri;
             document.getElementById('downloadBtn').style.display = 'block';
         }
-        
+        function saveImage() {
+            if (window.Android) {
+                window.Android.saveImage(currentImageData);
+                document.getElementById('preview').src = null;
+                document.getElementById('cameraInput').value = ''
+                document.getElementById('albumInput').value = ''
+            } else if (window.webkit && window.webkit.messageHandlers) {
+                window.webkit.messageHandlers.sendImage.postMessage(currentImageData);
+            }
+        }
+        function showText(text) {
+            document.getElementById('previewText').innerText = text || 'No speech recognized';
+        }        
         document.getElementById('cameraInput').addEventListener('change', showPicture);
         document.getElementById('albumInput').addEventListener('change', showPicture);
     </script>
