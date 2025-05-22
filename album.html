@@ -52,19 +52,17 @@
         #downloadBtn {
             display: none;
         }
-        input[type="file"] {
-            display: none;
-        }
+
     </style>
 </head>
 <body>
+    <h2>写真処理</h2>
     <div class="phone-container">
-        <h2>写真処理</h2>
-        <div class="phone-container">
-            <input type="file" accept=".camera" id="cameraInput">
-            <input type="file" accept=".album" id="albumInput">
-            <img id=" photo" style="display:none;" />
-        </div>        
+        <input type="file" id="cameraInput" capture="enviroment">
+        <input type="file" id="albumInput">
+        <img id=" photo" style="display:none;" />
+    </div>
+    <div class="phone-container">
         <div class="button-group">
             <button onclick="window.Android.startNativeCamera()">カメラ</button>
             <button onclick="window.Android.startNativeAlbum()">アルバム</button>
