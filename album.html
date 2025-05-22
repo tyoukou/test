@@ -67,7 +67,7 @@
     <div class="phone-container">
         <input type="file" id="cameraInput" capture="enviroment">
         <input type="file" id="albumInput">
-        <img id=" photo" style="display:none;" />
+        <img id="photo" style="display:none;" />
     </div>
     <div class="phone-container">
         <div class="button-group">
@@ -80,7 +80,6 @@
         <img src="https://cdn.pixabay.com/photo/2024/05/26/10/15/bird-8788491_1280.jpg" width="60">
 
         <button id="downloadBtn" onclick="downloadImage()">保存</button>
-        <input type="file" id="galleryInput" accept="image/*">
     </div>
 
     <script>
@@ -93,7 +92,7 @@
                     const img = document.getElementById('photo');
                     img.src = e.target.result;
                     img.style.display = 'block';
-                    currentImageData = uri;
+                    currentImageData = e.target.result;
                 };
                 reader.readAsDataURL(file);
             }
@@ -118,7 +117,6 @@
         
         document.getElementById('cameraInput').addEventListener('change', showPicture);
         document.getElementById('albumInput').addEventListener('change', showPicture);
-        document.getElementById('galleryInput').addEventListener('change', handleImageInput);
     </script>
 </body>
 
