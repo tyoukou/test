@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图片裁剪</title>
+    <!-- 引入 Cropper.js 的 CSS 和 JS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+        #image {
+            max-width: 100%;
+            display: none;
+        }
+        #preview {
+            margin-top: 20px;
+            max-width: 100%;
+        }
+        button {
+            margin: 10px;
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <h2>图片裁剪</h2>
+    <input type="file" id="imageInput" accept="image/*">
+    <img id="image" src="">
+    <button id="cropButton" style="display: none;">裁剪图片</button>
+    <h3>裁剪结果</h3>
+    <img id="preview" src="">
+    <script>
+        const imageInput = document.getElementById('imageInput');
+        const image = document.getElementById('image');
+        const cropButton = document.getElementById('cropButton');
+        const preview = document.getElementById('preview');
+        let cropper;
+
+        // 当用户选择图片时
+        imageInput.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    image.src = e.target.result;
+                    image.style.display = 'block';
+                    cropButton.style.display = 'block';
+
+                    // 初始化 Cropper.js
+                    if (cropper) {
+                        cropper.destroy();
+                    }
+                    cropper = new Cropper(image, {
+                        aspectRatio: 1, // 设置裁剪框比例，例如 1:1
+                        viewMode: 1,    // 限制裁剪框在图片内
+                        autoCropArea: 0.8, // 默认裁剪区域占图片的 80%
+                        movable: true,
+                        zoomable: true,
+                        scalable: true,
+                    });
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // 点击裁剪按钮
+        cropButton.addEventListener('click', () => {
+            if (cropper) {
+                // 获取裁剪后的图片（base64 格式）
+                const croppedCanvas = cropper.getCroppedCanvas({
+                    width: 300, // 设置输出图片宽度
+                    height: 300, // 设置输出图片高度
+                });
+                preview.src = croppedCanvas.toDataURL('image/jpeg');
+            }
+        });
+    </script>
+</body>
+</html>
