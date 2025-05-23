@@ -63,8 +63,8 @@
 </head>
 
 <body>
-    <h2>写真処理</h2>
     <div class="phone-container">
+        <button onclick="PopModal()">戻る</button>
         <input type="file" id="cameraInput" capture="enviroment">
         <input type="file" id="albumInput">
         <div class="button-group">
@@ -74,7 +74,9 @@
         </div>
         <p>★ <span id="previewText">Waiting for speech...</span></p>
         <img id="preview" alt="プレビュー">
-        <img src="https://cdn.pixabay.com/photo/2024/05/26/10/15/bird-8788491_1280.jpg" width="60">
+        <a href="https://cdn.pixabay.com/photo/2024/05/26/10/15/bird-8788491_1280.jpg" download="newname.jpg">
+            <img src="https://cdn.pixabay.com/photo/2024/05/26/10/15/bird-8788491_1280.jpg" width="60">
+        </a>
         <button id="downloadBtn" onclick="saveImage()">保存</button>
     </div>
     <script>
@@ -112,6 +114,13 @@
                 document.getElementById('preview').src = null;
                 document.getElementById('cameraInput').value = ''
                 document.getElementById('albumInput').value = ''
+            }
+        }
+        function PopModal() {
+            if (window.Android) {
+                window.Android.PopModal();
+            } else if (window.webkit && window.webkit.messageHandlers) {
+                window.webkit.messageHandlers.ios.postMessage("PopModal");
             }
         }
         // C#->JS for common api android and ios----------------------------------------------------------------------
