@@ -1,0 +1,248 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>移动端图片裁剪</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.css">
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      background: #f0f0f0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      touch-action: none; /* 防止浏览器默认缩放 */
+    }
+    .image-box {
+      width: 100%;
+      max-width: 400px;
+      position: relative;
+      overflow: hidden;
+    }
+    .image-box img {
+      max-width: 100%;
+      display: block;
+      transition: opacity 0.3s ease; /* 保存时淡入动画 */
+    }
+    .preview-title {
+      text-align: center;
+      font-size: 16px;
+      margin: 10px 0;
+    }
+    .slider-container {
+      width: 100%;
+      max-width: 400px;
+      margin: 20px 0;
+    }
+    input[type="range"] {
+      width: 100%;
+    }
+    .preview-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.3);
+      display: none;
+      transition: opacity 0.3s ease; /* 覆盖层淡入淡出 */
+    }
+    .save-button, .aspect-ratio-button {
+      padding: 10px 20px;
+      font-size: 16px;
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      margin: 5px;
+      transition: transform 0.2s ease, background 0.2s ease; /* 按钮动画 */
+    }
+    .save-button:hover, .aspect-ratio-button:hover {
+      background: #0056b3;
+      transform: scale(1.05); /* 按钮hover时微放大 */
+    }
+    .preview-box {
+      position: absolute;
+      bottom: 10px;
+      right: 10px;
+      width: 100px;
+      height: 100px;
+      border: 2px solid #fff;
+      background: #000;
+      overflow: hidden;
+      transition: transform 0.3s ease; /* 预览框缩放动画 */
+    }
+    .preview-box img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    /* Cropper.js裁剪框动画 */
+    .cropper-crop-box, .cropper-view-box {
+      transition: all 0.3s ease; /* 裁剪框平滑移动和缩放 */
+    }
+  </style>
+</head>
+<body>
+  <div class="image-box">
+    <div class="preview-title">图片编辑</div>
+    <img id="originalImage" src="https://via.placeholder.com/400" alt="Original">
+    <div class="preview-overlay" id="originalOverlay"></div>
+    <div class="preview-box">
+      <img id="previewImage" alt="Preview">
+    </div>
+  </div>
+  <div class="slider-container">
+    <label for="rotateSlider">旋转角度: <span id="angleDisplay">0</span>°</label>
+    <input type="range" id="rotateSlider" min="-180" max="180" value="0">
+  </div>
+  <div>
+    <button class="aspect-ratio-button" data-aspect="1">1:1</button>
+    <button class="aspect-ratio-button" data-aspect="4/3">4:3</button>
+    <button class="aspect-ratio-button" data-aspect="16/9">16:9</button>
+    <button class="aspect-ratio-button" data-aspect="0">自由</button>
+  </div>
+  <input type="file" id="imageInput" accept="image/*">
+  <button class="save-button" id="saveButton">保存</button>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.js"></script>
+  <script>
+    const image = document.getElementById('originalImage');
+    const previewImage = document.getElementById('previewImage');
+    const rotateSlider = document.getElementById('rotateSlider');
+    const angleDisplay = document.getElementById('angleDisplay');
+    const imageInput = document.getElementById('imageInput');
+    const originalOverlay = document.getElementById('originalOverlay');
+    const saveButton = document.getElementById('saveButton');
+    const aspectRatioButtons = document.querySelectorAll('.aspect-ratio-button');
+    let cropper;
+
+    function initializeCropper() {
+      if (cropper) cropper.destroy();
+      cropper = new Cropper(image, {
+        aspectRatio: 1,
+        viewMode: 1,
+        autoCropArea: 0.5,
+        zoomable: true,
+        scalable: true,
+        movable: true,
+        rotatable: true,
+        minCropBoxWidth: 50, // 设置最小裁剪框宽度
+        minCropBoxHeight: 50, // 设置最小裁剪框高度
+        ready() {
+          updatePreview();
+        },
+        crop() {
+          updatePreview();
+        },
+        zoom(event) {
+          originalOverlay.style.display = 'block';
+          updatePreview();
+        }
+      });
+    }
+
+    function updatePreview() {
+      const canvasData = cropper.getCroppedCanvas({ maxWidth: 400, maxHeight: 400 });
+      previewImage.src = canvasData.toDataURL();
+    }
+
+    function saveCrop() {
+      const canvasData = cropper.getCroppedCanvas({ maxWidth: 400, maxHeight: 400 });
+      image.style.opacity = '0'; // 淡出
+      setTimeout(() => {
+        image.src = canvasData.toDataURL();
+        image.style.opacity = '1'; // 淡入
+        cropper.destroy();
+        initializeCropper();
+      }, 300); // 匹配CSS过渡时间
+    }
+
+    rotateSlider.addEventListener('input', () => {
+      const angle = parseInt(rotateSlider.value);
+      angleDisplay.textContent = angle;
+      cropper.rotateTo(angle);
+    });
+
+    image.addEventListener('touchend', () => {
+      originalOverlay.style.display = 'none';
+      cropper.crop();
+    });
+
+    saveButton.addEventListener('click', () => {
+      saveCrop();
+    });
+
+    aspectRatioButtons.forEach(button => {
+      button.addEventListener('click', () => {
+        const aspectRatio = button.dataset.aspect === '0' ? NaN : eval(button.dataset.aspect);
+        cropper.setAspectRatio(aspectRatio);
+      });
+    });
+
+    imageInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          image.src = event.target.result;
+          initializeCropper();
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+
+    // 防止默认触摸缩放
+    document.addEventListener('touchstart', (e) => {
+      if (e.touches.length > 1) {
+        e.preventDefault();
+      }
+    }, { passive: false });
+
+    // 初始化
+    initializeCropper();
+  </script>
+</body>
+</html>
