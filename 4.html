@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Two Canvas with Mask, Sliders, and Maximize Button</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            background: #f0f0f0;
+            font-family: Arial, sans-serif;
+        }
+
+        .canvas-container {
+            position: relative;
+            width: 800px;
+            height: 600px;
+        }
+
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            border: 1px solid #000;
+        }
+
+        #mainCanvas {
+            z-index: 1;
+        }
+
+        #maskCanvas {
+            z-index: 2;
+        }
+
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        label {
+            margin-right: 10px;
+        }
+
+        button {
+            margin-top: 10px;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="canvas-container">
+        <canvas id="mainCanvas" width="800" height="600"></canvas>
+        <canvas id="maskCanvas" width="800" height="600"></canvas>
+    </div>
+    <div class="controls">
+        <div>
+            <label for="leftSlider">左边 (px):</label>
+            <input type="range" id="leftSlider" min="0" max="800" value="0">
+            <span id="leftValue">0</span>
+        </div>
+        <div>
+            <label for="topSlider">上边 (px):</label>
+            <input type="range" id="topSlider" min="0" max="600" value="0">
+            <span id="topValue">0</span>
+        </div>
+        <div>
+            <label for="rightSlider">右边 (px):</label>
+            <input type="range" id="rightSlider" min="0" max="800" value="800">
+            <span id="rightValue">800</span>
+        </div>
+        <div>
+            <label for="bottomSlider">下边 (px):</label>
+            <input type="range" id="bottomSlider" min="0" max="600" value="600">
+            <span id="bottomValue">600</span>
+        </div>
+        <button id="maximizeButton">确定</button>
+    </div>
+    <script>
+        const mainCanvas = document.getElementById('mainCanvas');
+        const maskCanvas = document.getElementById('maskCanvas');
+        const mainCtx = mainCanvas.getContext('2d');
+        const maskCtx = maskCanvas.getContext('2d');
+
+        // 获取滑块和显示值的元素
+        const leftSlider = document.getElementById('leftSlider');
+        const topSlider = document.getElementById('topSlider');
+        const rightSlider = document.getElementById('rightSlider');
+        const bottomSlider = document.getElementById('bottomSlider');
+        const leftValue = document.getElementById('leftValue');
+        const topValue = document.getElementById('topValue');
+        const rightValue = document.getElementById('rightValue');
+        const bottomValue = document.getElementById('bottomValue');
+        const maximizeButton = document.getElementById('maximizeButton');
+
+        // 加载图片
+        const img = new Image();
+        img.crossOrigin = "Anonymous";
+        img.src = 'https://img-s-msn-com.akamaized.net/tenant/amp/entityid/AA1FkVgF.img';
+        let offsetX, offsetY;
+
+        function drawCanvases() {
+            // 获取滑块值
+            const left = parseInt(leftSlider.value);
+            const top = parseInt(topSlider.value);
+            const right = parseInt(rightSlider.value);
+            const bottom = parseInt(bottomSlider.value);
+
+            // 确保右边大于左边，下边大于上边
+            if (right <= left || bottom <= top) {
+                maskCtx.clearRect(0, 0, maskCanvas.width, maskCanvas.height);
+                maskCtx.fillStyle = 'red';
+                maskCtx.font = '20px Arial';
+                maskCtx.fillText('无效的矩形尺寸', 10, 50);
+                return;
+            }
+
+            // 更新显示值
+            leftValue.textContent = left;
+            topValue.textContent = top;
+            rightValue.textContent = right;
+            bottomValue.textContent = bottom;
+
+            // 绘制蒙版和透明矩形
+            maskCtx.clearRect(0, 0, maskCanvas.width, maskCanvas.height); // 清空蒙版画布
+            maskCtx.fillRect(0, 0, maskCanvas.width, maskCanvas.height);
+            maskCtx.clearRect(left, top, right - left, bottom - top);
+        }
+        function maximizeRect() {
+            const left = parseInt(leftSlider.value);
+            const top = parseInt(topSlider.value);
+            const right = parseInt(rightSlider.value);
+            const bottom = parseInt(bottomSlider.value);
+            const centerX = (left + right) / 2;
+            const centerY = (top + bottom) / 2;
+
+            if (right <= left || bottom <= top) {
+                maskCtx.clearRect(0, 0, maskCanvas.width, maskCanvas.height);
+                maskCtx.fillStyle = 'red';
+                maskCtx.font = '20px Arial';
+                maskCtx.fillText('无效的矩形尺寸', 10, 50);
+                return;
+            }
+
+            // 计算缩放比例，保持图片比例
+            const rectWidth = right - left;
+            const rectHeight = bottom - top;
+            const scale = Math.min(maskCanvas.width / rectWidth, maskCanvas.height / rectHeight);
+
+            const destCenterX = parseInt(maskCanvas.width / 2);
+            const destCenterY = parseInt(maskCanvas.height / 2);
+            const destLeft = parseInt(destCenterX - rectWidth * scale / 2);
+            const destTop = parseInt(destCenterY - rectHeight * scale / 2);
+            const destRight = parseInt(destCenterX + rectWidth * scale / 2);
+            const destBottom = parseInt(destCenterY + rectHeight * scale / 2);
+
+            // 更新显示值
+            leftValue.textContent = destLeft;
+            topValue.textContent = destTop;
+            rightValue.textContent = destRight;
+            bottomValue.textContent = destBottom;
+            // 更新值
+            leftSlider.value = destLeft;
+            topSlider.value = destTop;
+            rightSlider.value = destRight;
+            bottomSlider.value = destBottom;
+
+            // 平移到放大中心
+            const transform = mainCtx.getTransform();
+            offsetX += (destCenterX - centerX) / transform.a;
+            offsetY += (destCenterY - centerY) / transform.d;
+            mainCtx.clearRect(-mainCanvas.width / 2 / transform.a, -mainCanvas.height / 2 / transform.d, mainCanvas.width / transform.a, mainCanvas.height / transform.d);
+            mainCtx.fillRect(-mainCanvas.width / 2 / transform.a, -mainCanvas.height / 2 / transform.d, mainCanvas.width / transform.a, mainCanvas.height / transform.d);
+            mainCtx.scale(scale, scale);
+            mainCtx.drawImage(img, (-img.width / 2) + offsetX, (-img.height / 2) + offsetY);
+
+            // 清空主画布并填充黑色背景
+            maskCtx.clearRect(0, 0, maskCanvas.width, maskCanvas.height); // 清空蒙版画布
+            maskCtx.fillRect(0, 0, maskCanvas.width, maskCanvas.height);
+            maskCtx.clearRect(destLeft, destTop, destRight - destLeft, destBottom - destTop);
+        }
+
+        img.onload = function () {
+            // 初始绘制背景图片
+            const scale = Math.min(mainCanvas.width / img.width, mainCanvas.height / img.height);
+            offsetX = 0, offsetY = 0;
+            mainCtx.fillStyle = 'blue';
+            mainCtx.translate(mainCanvas.width / 2, mainCanvas.height / 2);
+            mainCtx.scale(scale, scale);
+            mainCtx.clearRect(-mainCanvas.width / 2 / scale, -mainCanvas.height / 2 / scale, mainCanvas.width / scale, mainCanvas.height / scale);
+            mainCtx.fillRect(-mainCanvas.width / 2 / scale, -mainCanvas.height / 2 / scale, mainCanvas.width / scale, mainCanvas.height / scale);
+            mainCtx.drawImage(img, -img.width / 2, -img.height / 2);
+
+            // 初始绘制蒙版画布
+            const left = parseInt((maskCanvas.width - img.width * scale) / 2);
+            const top = parseInt((maskCanvas.height - img.height * scale) / 2);
+            const right = parseInt(left + img.width * scale);
+            const bottom = parseInt(top + img.height * scale);
+            maskCtx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            maskCtx.clearRect(0, 0, maskCanvas.width, maskCanvas.height); // 清空蒙版画布
+            maskCtx.fillRect(0, 0, maskCanvas.width, maskCanvas.height);
+            maskCtx.clearRect(left, top, right - left, bottom - top);
+            // 更新显示值
+            leftValue.textContent = left;
+            topValue.textContent = top;
+            rightValue.textContent = right;
+            bottomValue.textContent = bottom;
+            // 更新值
+            leftSlider.value = left;
+            topSlider.value = top;
+            rightSlider.value = right;
+            bottomSlider.value = bottom;
+        };
+
+        img.onerror = function () {
+            console.error('图片加载失败');
+            maskCtx.fillStyle = 'red';
+            maskCtx.font = '20px Arial';
+            maskCtx.fillText('图片加载失败', 10, 50);
+        };
+
+        // 为滑块添加事件监听器
+        [leftSlider, topSlider, rightSlider, bottomSlider].forEach(slider => {
+            slider.addEventListener('input', () => {
+                drawCanvases();
+            });
+        });
+
+        // 为最大化按钮添加事件监听器
+        maximizeButton.addEventListener('click', maximizeRect);
+    </script>
+</body>
+
+</html>
