@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Two Canvas with Mask, Sliders, and Maximize Button</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            background: #f0f0f0;
+            font-family: Arial, sans-serif;
+        }
+
+        .canvas-container {
+            position: relative;
+            width: 800px;
+            height: 600px;
+        }
+
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            border: 1px solid #000;
+        }
+
+        #mainCanvas {
+            z-index: 1;
+        }
+
+        #maskCanvas {
+            z-index: 2;
+        }
+
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        label {
+            margin-right: 10px;
+        }
+
+        button {
+            margin-top: 10px;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="canvas-container">
+        <canvas id="mainCanvas" width="800" height="600"></canvas>
+        <canvas id="maskCanvas" width="800" height="600"></canvas>
+    </div>
+    <div class="controls">
+        <div>
+            <label for="leftSlider">左边 (px):</label>
+            <input type="range" id="leftSlider" min="0" max="800" value="0">
+            <span id="leftValue">0</span>
+        </div>
+        <div>
+            <label for="topSlider">上边 (px):</label>
+            <input type="range" id="topSlider" min="0" max="600" value="0">
+            <span id="topValue">0</span>
+        </div>
+        <div>
+            <label for="rightSlider">右边 (px):</label>
+            <input type="range" id="rightSlider" min="0" max="800" value="800">
+            <span id="rightValue">800</span>
+        </div>
+        <div>
+            <label for="bottomSlider">下边 (px):</label>
+            <input type="range" id="bottomSlider" min="0" max="600" value="600">
+            <span id="bottomValue">600</span>
+        </div>
+        <button id="maximizeButton">确定</button>
+    </div>
+    <script>
+        const mainCanvas = document.getElementById('mainCanvas');
+        const maskCanvas = document.getElementById('maskCanvas');
+        const mainCtx = mainCanvas.getContext('2d');
+        const maskCtx = maskCanvas.getContext('2d');
+
+        // 获取滑块和显示值的元素
+        const leftSlider = document.getElementById('leftSlider');
+        const topSlider = document.getElementById('topSlider');
+        const rightSlider = document.getElementById('rightSlider');
+        const bottomSlider = document.getElementById('bottomSlider');
+        const leftValue = document.getElementById('leftValue');
+        const topValue = document.getElementById('topValue');
+        const rightValue = document.getElementById('rightValue');
+        const bottomValue = document.getElementById('bottomValue');
+        const maximizeButton = document.getElementById('maximizeButton');
+
+        // マスクエリア
+        const maskRect = {};
+        const touchInfo = { rad: 0 };
+        const drawInfo = {};
+
+        let isDragging = false;
+        mainCtx.fillStyle = 'white';
+        maskCtx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+
+        // 加载图片
+        const img = new Image();
+        img.crossOrigin = "Anonymous";
+        img.src = 'https://img-s-msn-com.akamaized.net/tenant/amp/entityid/AA1FkVgF.img';
+
+        function updateMainCanvas(e, f, a, d, rad) {
+            // 画像：クリア
+            mainCtx.save();
+            mainCtx.setTransform(1, 0, 0, 1, 0, 0);
+            mainCtx.clearRect(0, 0, mainCanvas.width, mainCanvas.height);
+            mainCtx.fillRect(0, 0, mainCanvas.width, mainCanvas.height);
+            mainCtx.restore();
+
+            const transform = mainCtx.getTransform();
+            transform.a += a * Math.cos(rad);
+            transform.d += d * Math.cos(rad);
+            transform.e += e;
+            transform.f += f;
+            transform.b += a * Math.sin(rad);
+            transform.c += -d * Math.sin(rad);;
+            mainCtx.setTransform(transform);
+            mainCtx.drawImage(img, drawInfo.offsetX, drawInfo.offsetY);
+        }
+
+        function updateMaskCanvas() {
+            // マスク領域：クリア
+            maskCtx.clearRect(0, 0, maskCanvas.width, maskCanvas.height);
+            // 無効領域：描画
+            maskCtx.fillRect(0, 0, maskCanvas.width, maskCanvas.height);
+            // 有効領域：描画
+            maskCtx.clearRect(maskRect.left, maskRect.top, maskRect.width, maskRect.height);
+        }
+
+        function maximizeRect() {
+            const maxRect = getCanvasMaxRect(maskCanvas, maskRect);
+
+            // 画像：クリア
+            mainCtx.save();
+            mainCtx.setTransform(1, 0, 0, 1, 0, 0);
+            mainCtx.clearRect(0, 0, mainCanvas.width, mainCanvas.height);
+            mainCtx.fillRect(0, 0, mainCanvas.width, mainCanvas.height);
+            mainCtx.restore();
+
+            // // 画像：移動
+            const transform = mainCtx.getTransform();
+            const inverse = getInverseMatrix(transform);
+            const tXY = screenToObjectCoords((maxRect.centerX), (maxRect.centerY), inverse);
+            mainCtx.translate(tXY.x, tXY.y);
+
+            // // 画像：回転
+            // mainCtx.translate(drawInfo.translateX, drawInfo.translateY);
+
+            // 画像：拡大縮小
+            const scale = Math.min(maskCanvas.width / maskRect.width, maskCanvas.height / maskRect.height);
+            mainCtx.scale(scale, scale);
+
+            // 画像：描画(中心より)
+            const startXY = screenToObjectCoords(maskRect.centerX, maskRect.centerY, inverse);
+            drawInfo.offsetX += -startXY.x;
+            drawInfo.offsetY += -startXY.y;
+            mainCtx.drawImage(img, drawInfo.offsetX, drawInfo.offsetY);
+
+            // マスク：値更新
+            setMaskRect(maxRect.left, maxRect.top, maxRect.right, maxRect.bottom);
+
+            // マスク：描画
+            updateMaskCanvas()
+        }
+
+        function setMaskRect(left, top, right, bottom) {
+            left = parseFloat(left);
+            top = parseFloat(top);
+            right = parseFloat(right);
+            bottom = parseFloat(bottom);
+            // エッジチェック
+            if (right <= left || bottom <= top) {
+                maskCtx.clearRect(0, 0, maskCanvas.width, maskCanvas.height);
+                maskCtx.save();
+                maskCtx.fillStyle = 'red';
+                maskCtx.font = '20px Arial';
+                maskCtx.fillText('エリア無効', 10, 50);
+                maskCtx.restore();
+                return false;
+            }
+            // 更新显示值
+            leftValue.textContent = parseInt(left);
+            topValue.textContent = parseInt(top);
+            rightValue.textContent = parseInt(right);
+            bottomValue.textContent = parseInt(bottom);
+            // 更新值
+            leftSlider.value = left;
+            topSlider.value = top;
+            rightSlider.value = right;
+            bottomSlider.value = bottom;
+
+            maskRect.left = left;
+            maskRect.top = top;
+            maskRect.right = right;
+            maskRect.bottom = bottom;
+            maskRect.width = right - left;
+            maskRect.height = bottom - top;
+            maskRect.centerX = (left + right) / 2;
+            maskRect.centerY = (top + bottom) / 2;
+            return true;
+        }
+
+        function getCanvasMaxRect(canvas, rect) {
+            const scale = Math.min(canvas.width / rect.width, canvas.height / rect.height);
+            const maxCenterX = canvas.width / 2;
+            const maxCenterY = canvas.height / 2;
+            const maxRect = {};
+            maxRect.left = maxCenterX - rect.width * scale / 2;
+            maxRect.top = maxCenterY - rect.height * scale / 2;
+            maxRect.right = maxCenterX + rect.width * scale / 2;
+            maxRect.bottom = maxCenterY + rect.height * scale / 2;
+            maxRect.width = maxRect.right - maxRect.left;
+            maxRect.height = maxRect.bottom - maxRect.top;
+            maxRect.centerX = maxCenterX;
+            maxRect.centerY = maxCenterY;
+            return maxRect;
+        }
+
+        function getInverseMatrix(m) {
+            const det = m.a * m.d - m.b * m.c;
+            if (Math.abs(det) < 1e-10) {
+                return null;
+            }
+            const invDet = 1 / det;
+            const invA = m.d * invDet;
+            const invB = -m.b * invDet;
+            const invC = -m.c * invDet;
+            const invD = m.a * invDet;
+            const invE = -(m.e * invA + m.f * invC);
+            const invF = -(m.e * invB + m.f * invD);
+            return {
+                a: invA, b: invB,
+                c: invC, d: invD,
+                e: invE, f: invF
+            };
+        }
+
+        function screenToObjectCoords(x, y, invertedMatrix) {
+            return {
+                x: invertedMatrix.a * x + invertedMatrix.c * y + invertedMatrix.e,
+                y: invertedMatrix.b * x + invertedMatrix.d * y + invertedMatrix.f
+            };
+
+        }
+
+        function getMatrixBC(angle) {
+            // [sx*cos(θ)  -sy*sin(θ)  tx] 
+            // [sx*sin(θ)   sy*cos(θ)  ty]
+            // [   0          0        1]            
+            const rad = angle * Math.PI / 180;
+            return {
+                b: Math.sin(rad),
+                c: -Math.sin(rad)
+            };
+        }
+        img.onload = function () {
+            // 初始绘制背景图片
+            const scale = Math.min(mainCanvas.width / img.width, mainCanvas.height / img.height);
+            drawInfo.offsetX = -img.width / 2;
+            drawInfo.offsetY = -img.height / 2;
+            mainCtx.translate(mainCanvas.width / 2, mainCanvas.height / 2);
+            mainCtx.scale(scale, scale);
+            mainCtx.clearRect(-mainCanvas.width / 2 / scale, -mainCanvas.height / 2 / scale, mainCanvas.width / scale, mainCanvas.height / scale);
+            mainCtx.fillRect(-mainCanvas.width / 2 / scale, -mainCanvas.height / 2 / scale, mainCanvas.width / scale, mainCanvas.height / scale);
+            mainCtx.drawImage(img, -img.width / 2, -img.height / 2);
+
+            // 初始绘制蒙版画布
+            const left = (maskCanvas.width - img.width * scale) / 2;
+            const top = (maskCanvas.height - img.height * scale) / 2;
+            const right = left + img.width * scale;
+            const bottom = top + img.height * scale;
+            if (setMaskRect(left, top, right, bottom)) {
+                updateMaskCanvas();
+            }
+        };
+
+        img.onerror = function () {
+            console.error('图片加载失败');
+            maskCtx.fillStyle = 'red';
+            maskCtx.font = '20px Arial';
+            maskCtx.fillText('图片加载失败', 10, 50);
+        };
+
+        // 为滑块添加事件监听器
+        [leftSlider, topSlider, rightSlider, bottomSlider].forEach(slider => {
+            slider.addEventListener('input', () => {
+                // 获取滑块值
+                const left = leftSlider.value;
+                const top = topSlider.value;
+                const right = rightSlider.value;
+                const bottom = bottomSlider.value;
+                if (setMaskRect(left, top, right, bottom)) {
+                    updateMaskCanvas();
+                }
+            });
+        });
+
+        // マウス：押下
+        maskCanvas.addEventListener('mousedown', function (e) {
+            isDragging = true;
+            touchInfo.pX = e.clientX;
+            touchInfo.pY = e.clientY;
+        });
+
+        // マウス：移動
+        maskCanvas.addEventListener('mousemove', function (e) {
+            if (isDragging) {
+                const offsetE = e.clientX - touchInfo.pX;
+                const offsetF = e.clientY - touchInfo.pY;
+                const offsetA = 0;
+                const offsetD = 0;
+                touchInfo.pX = e.clientX;
+                touchInfo.pY = e.clientY;
+                updateMainCanvas(offsetE, offsetF, offsetA, offsetD, 0);
+            }
+        });
+
+        // マウス：スクロール
+        maskCanvas.addEventListener('wheel', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const rect = maskCanvas.getBoundingClientRect();
+            touchInfo.cX = e.clientX - rect.left;
+            touchInfo.cY = e.clientY - rect.top;
+
+            const offsetE = 0;
+            const offsetF = 0;
+            let offsetA = 0;
+            let offsetD = 0;
+            if (e.deltaY < 0) {
+                offsetA = 0.03;
+                offsetD = 0.03;
+            } else {
+                offsetA = -0.03;
+                offsetD = -0.03;
+            }
+
+            if (e.deltaX < 0) {
+                touchInfo.rad += 0.03 * Math.PI / 180;
+            } else {
+                touchInfo.rad += -0.03 * Math.PI / 180;
+            }
+            updateMainCanvas(offsetE, offsetF, offsetA, offsetD, touchInfo.rad);
+        });
+
+        // マウス：アップ
+        maskCanvas.addEventListener('mouseup', function () {
+            isDragging = false;
+        });
+
+        // マウス：離し
+        maskCanvas.addEventListener('mouseout', function () {
+            isDragging = false;
+        });
+
+        // ボタン：確定
+        maximizeButton.addEventListener('click', maximizeRect);        
+    </script>
+</body>
+
+</html>
