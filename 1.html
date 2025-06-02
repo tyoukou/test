@@ -19,10 +19,8 @@
 
         .canvas-container {
             position: relative;
-            width: 90%;
-            ;
+            width: 95%;
             height: 400px;
-            background: red;
         }
 
         canvas {
@@ -549,7 +547,7 @@
     <script>
         const img = new Image();
         img.crossOrigin = "Anonymous";
-        img.src = 'https://th.bing.com/th/id/R.f4437f784608fb23e07401010a1eb329?rik=80eenk9Zz8rg4Q&riu=http%3a%2f%2frivoire.cs.sonoma.edu%2fcs115%2flabs%2fimages%2fcs115_lab04_color_grid.png&ehk=rCyHPcJZ%2fCiNllJk4TQscgm31OvFGDtDSE85gYWqqpQ%3d&risl=&pid=ImgRaw&r=0';
+        img.src = 'https://tyoukou.github.io/test/1.jpg';
         img.onload = function () {
             const scale = Math.max(mainCanvas.width / img.width, mainCanvas.height / img.height);
             touch.imgX = -img.width / 2;
