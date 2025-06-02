@@ -397,7 +397,7 @@
                 tmp.preX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
                 tmp.preY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
                 tmp.preDistance = _getDistance(e.touches[0], e.touches[1]);
-                tmp.preAngle = _getAngle(e.touches[0], e.touches[1]);
+                // tmp.preAngle = _getAngle(e.touches[0], e.touches[1]);
             }
 
 
@@ -425,13 +425,13 @@
                 const touchX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
                 const touchY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
                 const touchDistance = _getDistance(e.touches[0], e.touches[1]);
-                const touchAngle = _getAngle(e.touches[0], e.touches[1]) - tmp.preAngle;
+                // const touchAngle = _getAngle(e.touches[0], e.touches[1]) - tmp.preAngle;
 
                 E = touchX - tmp.preX;
                 F = touchY - tmp.preY;
                 A = (touchDistance - tmp.preDistance) / tmp.preDistance;
                 D = A;
-                RAD = touchAngle;
+                // RAD = touchAngle;
 
                 tmp.preX = touchX;
                 tmp.preY = touchY;
