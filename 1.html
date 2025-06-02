@@ -130,6 +130,50 @@
         maskCanvas.height = height * dpr;
         maskCtx.fillStyle = 'rgba(0, 0, 0, 0.6)';
 
+        const img = new Image();
+        img.crossOrigin = "Anonymous";
+        img.src = 'https://th.bing.com/th/id/R.f4437f784608fb23e07401010a1eb329?rik=80eenk9Zz8rg4Q&riu=http%3a%2f%2frivoire.cs.sonoma.edu%2fcs115%2flabs%2fimages%2fcs115_lab04_color_grid.png&ehk=rCyHPcJZ%2fCiNllJk4TQscgm31OvFGDtDSE85gYWqqpQ%3d&risl=&pid=ImgRaw&r=0';
+        img.onload = function () {
+            const scale = Math.max(mainCanvas.width / img.width, mainCanvas.height / img.height);
+            touch.imgX = -img.width / 2;
+            touch.imgY = -img.height / 2;
+            touch.e = mainCanvas.width / 2;
+            touch.f = mainCanvas.height / 2;
+            touch.a = scale;
+            touch.d = scale;
+            updateMainCanvas();
+
+            const width = Math.min(img.width * scale, mainCanvas.width);
+            const height = Math.min(img.height * scale, mainCanvas.height);
+            const left = (maskCanvas.width - width) / 2;
+            const top = (maskCanvas.height - height) / 2;
+            const right = left + width;
+            const bottom = top + height;
+
+            setMaskRect(left, top, right, bottom)
+            updateMaskCanvas();
+        };
+
+        img.onerror = function () {
+            alert('图片加载失败');
+        };
+
+        // スライドバー
+        [leftSlider, topSlider, rightSlider, bottomSlider].forEach(slider => {
+            slider.addEventListener('input', () => {
+                const left = leftSlider.value;
+                const top = topSlider.value;
+                const right = rightSlider.value;
+                const bottom = bottomSlider.value;
+                setMaskRect(left, top, right, bottom)
+                updateMaskCanvas();
+            });
+        });
+
+        // ボタン：確定
+        maximizeButton.addEventListener('click', confirm_clicked);
+        testButton.addEventListener('click', test_clicked);
+
     </script>
 
     <script>
@@ -547,53 +591,6 @@
 
     </script>
 
-    <script>
-        img.onload = function () {
-            const scale = Math.max(mainCanvas.width / img.width, mainCanvas.height / img.height);
-            touch.imgX = -img.width / 2;
-            touch.imgY = -img.height / 2;
-            touch.e = mainCanvas.width / 2;
-            touch.f = mainCanvas.height / 2;
-            touch.a = scale;
-            touch.d = scale;
-            updateMainCanvas();
-
-            const width = Math.min(img.width * scale, mainCanvas.width);
-            const height = Math.min(img.height * scale, mainCanvas.height);
-            const left = (maskCanvas.width - width) / 2;
-            const top = (maskCanvas.height - height) / 2;
-            const right = left + width;
-            const bottom = top + height;
-
-            setMaskRect(left, top, right, bottom)
-            updateMaskCanvas();
-        };
-
-        img.onerror = function () {
-            alert('图片加载失败');
-        };
-
-        // スライドバー
-        [leftSlider, topSlider, rightSlider, bottomSlider].forEach(slider => {
-            slider.addEventListener('input', () => {
-                const left = leftSlider.value;
-                const top = topSlider.value;
-                const right = rightSlider.value;
-                const bottom = bottomSlider.value;
-                setMaskRect(left, top, right, bottom)
-                updateMaskCanvas();
-            });
-        });
-
-        // ボタン：確定
-        maximizeButton.addEventListener('click', confirm_clicked);
-        testButton.addEventListener('click', test_clicked);
-        
-        const img = new Image();
-        img.crossOrigin = "Anonymous";
-        img.src = 'https://img-s-msn-com.akamaized.net/tenant/amp/entityid/AA1FkVgF.img';
-
-    </script>
 </body>
 
 </html>
