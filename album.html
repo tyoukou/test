@@ -1,596 +1,157 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 
-<head>
+<head>More actions
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Two Canvas with Mask, Sliders, and Maximize Button</title>
+    <title>模擬テスト</title>
     <style>
         body {
+            font-family: Arial, sans-serif;
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
             height: 100vh;
             margin: 0;
-            background: #f0f0f0;
-            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
         }
 
-        .canvas-container {
-            position: relative;
-            width: 90%;
-            ;
-            height: 400px;
-            background: red;
-        }
-
-        canvas {
-            position: absolute;
-            top: 0%;
-            left: 0%;
-            width: 100%;
-            height: 100%;
-            border: 1px solid #000;
-        }
-
-        #mainCanvas {
-            z-index: 1;
-        }
-
-        #maskCanvas {
-            z-index: 2;
-        }
-
-        .controls {
-            margin-top: 20px;
+        .phone-container {
+            width: 360px;
+            height: 640px;
+            background-color: #ffffff;
+            border: 2px solid #333;
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
             display: flex;
             flex-direction: column;
-            gap: 10px;
+            align-items: center;
         }
 
-        label {
-            margin-right: 10px;
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
         }
 
         button {
-            margin-top: 10px;
             padding: 10px 20px;
             font-size: 16px;
             cursor: pointer;
-            background-color: #007bff;
-            color: white;
             border: none;
             border-radius: 5px;
+            background-color: #4CAF50;
+            color: white;
         }
 
         button:hover {
-            background-color: #0056b3;
+            background-color: #45a049;
+        }
+
+        #preview {
+            max-width: 100%;
+            max-height: 400px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        #downloadBtn {
+            display: none;
         }
     </style>
 </head>
 
 <body>
-    <div class="canvas-container">
-        <canvas id="mainCanvas"></canvas>
-        <canvas id="maskCanvas"></canvas>
-    </div>
-    <div class="controls">
-        <div>
-            <label for="leftSlider">左边 (px):</label>
-            <input type="range" id="leftSlider" min="0" max="800" value="0">
-            <span id="leftValue">0</span>
+    <div class="phone-container">
+        <button onclick="PopModal()">戻る</button>
+        <input type="file" id="cameraInput" capture="enviroment">
+        <input type="file" id="albumInput">
+        <div class="button-group">
+            <button onclick="startNativeCamera()">カメラ</button>
+            <button onclick="startNativeAlbum()">アルバム</button>
+            <button onclick="startSpeechRecognition()">オーディオ</button>
         </div>
-        <div>
-            <label for="topSlider">上边 (px):</label>
-            <input type="range" id="topSlider" min="0" max="600" value="0">
-            <span id="topValue">0</span>
-        </div>
-        <div>
-            <label for="rightSlider">右边 (px):</label>
-            <input type="range" id="rightSlider" min="0" max="800" value="800">
-            <span id="rightValue">800</span>
-        </div>
-        <div>
-            <label for="bottomSlider">下边 (px):</label>
-            <input type="range" id="bottomSlider" min="0" max="600" value="600">
-            <span id="bottomValue">600</span>
-        </div>
-        <button id="maximizeButton">确定</button>
-        <button id="testButton">TEST</button>
+        <p>★ <span id="previewText">Waiting for speech...</span></p>
+        <img id="preview" alt="プレビュー">
+        <a href="https://cdn.pixabay.com/photo/2024/05/26/10/15/bird-8788491_1280.jpg" download="newname.jpg">
+        <a href="https://tyoukou.github.io/test/z.zip" download="newname.zip">
+            <img src="https://cdn.pixabay.com/photo/2024/05/26/10/15/bird-8788491_1280.jpg" width="60">
+        </a>
+        <button id="downloadBtn" onclick="saveImage()">保存</button>
     </div>
     <script>
-        // キャンバス
-        const mainCanvas = document.getElementById('mainCanvas');
-        const maskCanvas = document.getElementById('maskCanvas');
-        const mainCtx = mainCanvas.getContext('2d');
-        const maskCtx = maskCanvas.getContext('2d');
-        // タッチ
-        const leftSlider = document.getElementById('leftSlider');
-        const topSlider = document.getElementById('topSlider');
-        const rightSlider = document.getElementById('rightSlider');
-        const bottomSlider = document.getElementById('bottomSlider');
-        const leftValue = document.getElementById('leftValue');
-        const topValue = document.getElementById('topValue');
-        const rightValue = document.getElementById('rightValue');
-        const bottomValue = document.getElementById('bottomValue');
-        const maximizeButton = document.getElementById('maximizeButton');
-        const testButton = document.getElementById('testButton');
-
-        //　画像読み込み
-        // const dpr = window.devicePixelRatio || 1;
-        const dpr = 1;
-        const container = document.querySelector('.canvas-container');
-        const width = container.clientWidth;
-        const height = container.clientHeight;
-        mainCanvas.width = width * dpr;
-        mainCanvas.height = height * dpr;
-        mainCtx.fillStyle = 'white';
-        maskCanvas.width = width * dpr;
-        maskCanvas.height = height * dpr;
-        maskCtx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-        const img = new Image();
-        img.crossOrigin = "Anonymous";
-        img.src = 'https://img-s-msn-com.akamaized.net/tenant/amp/entityid/AA1FkVgF.img';
-    </script>
-
-    <script>
-        const touch = { a: 1, d: 1, e: 0, f: 0, rad: 0, imgX: 0, imgY: 0 };
-        const touchDelta = { a: 0, d: 0, e: 0, f: 0, rad: 0, imgX: 0, imgY: 0 };
-        const maskRect = { left: 0, top: 0, right: 0, bottom: 0, width: 0, height: 0, centerX: 0, centerY: 0 };
-        const maskRectDelta = { left: 0, top: 0, right: 0, bottom: 0, width: 0, height: 0, centerX: 0, centerY: 0 };
-        let isDragging = false, animateRate = 0, animationId;
-        const tmp = {};
-
-        function test_clicked() {
-            _test_clicked("touchstart", 3)
-
-            for (i = 2; i < 10; i++) {
-                _test_clicked("touchmove", i * 3)
-            }
-            _test_clicked("touchend", 10)
-        }
-
-        function _test_clicked(str, delta) {
-            const touch1 = new Touch({
-                identifier: 0,
-                target: maskCanvas,
-                clientX: 173.5 - 50 - delta,
-                clientY: 200,
-                radiusX: 10,
-                radiusY: 10
-            });
-
-            const touch2 = new Touch({
-                identifier: 1,
-                target: maskCanvas,
-                clientX: 173.5 + 50 + delta,
-                clientY: 200,
-                radiusX: 10,
-                radiusY: 10
-            });
-            const touchStartEvent = new TouchEvent(str, {
-                touches: [touch1, touch2],
-                changedTouches: [touch1, touch2],
-                bubbles: true,
-                cancelable: true
-            });
-            maskCanvas.dispatchEvent(touchStartEvent);
-        }
-
-        function confirm_clicked() {
-            if (animateRate > 0) return;
-
-            touch.a += touchDelta.a;
-            touch.d += touchDelta.d;
-            touch.e += touchDelta.e;
-            touch.f += touchDelta.f;
-            touch.rad += touchDelta.rad;
-            touch.imgX += touchDelta.imgX;
-            touch.imgY += touchDelta.imgY;
-
-            touchDelta.a = 0;
-            touchDelta.d = 0;
-            touchDelta.e = 0;
-            touchDelta.f = 0;
-            touchDelta.rad = 0;
-            touchDelta.imgX = 0;
-            touchDelta.imgY = 0;
-
-
-            setMaskRect(
-                maskRect.left + maskRectDelta.left,
-                maskRect.top + maskRectDelta.top,
-                maskRect.right + maskRectDelta.right,
-                maskRect.bottom + maskRectDelta.bottom
-            );
-
-            maskRectDelta.left = 0;
-            maskRectDelta.top = 0;
-            maskRectDelta.right = 0;
-            maskRectDelta.bottom = 0;
-            maskRectDelta.width = 0;
-            maskRectDelta.height = 0;
-            maskRectDelta.centerX = 0;
-            maskRectDelta.centerY = 0;
-
-            const maxRect = _getCanvasMaxRect(maskCanvas, maskRect);
-            const imgXY = _getInverseCoords(maskRect.centerX, maskRect.centerY, mainCtx.getTransform());
-            const scale = Math.min(maskCanvas.width / maskRect.width, maskCanvas.height / maskRect.height);
-
-            touchDelta.e = maxRect.centerX - touch.e;
-            touchDelta.f = maxRect.centerY - touch.f;
-            touchDelta.a = (touchDelta.a + touch.a) * scale - touch.a;
-            touchDelta.d = (touchDelta.d + touch.d) * scale - touch.d;
-            touchDelta.imgX = -imgXY.x;
-            touchDelta.imgY = -imgXY.y;
-
-            maskRectDelta.left = maxRect.left - maskRect.left;
-            maskRectDelta.top = maxRect.top - maskRect.top;
-            maskRectDelta.right = maxRect.right - maskRect.right;
-            maskRectDelta.bottom = maxRect.bottom - maskRect.bottom;
-            maskRectDelta.width = maxRect.width - maskRect.width;
-            maskRectDelta.height = maxRect.height - maskRect.height;
-            maskRectDelta.centerX = maxRect.centerX - maskRect.centerX;
-            maskRectDelta.centerY = maxRect.botcenterYtom - maskRect.centerY;
-
-            animate(updateMainCanvas, updateMaskCanvas);
-        }
-
-        function animate(main, mask) {
-            animateRate += 1;
-            rate = 1 / (1 + Math.exp(-(animateRate - 9)));
-            if (rate > 0.99) {
-                animateRate = 0;
-                cancelAnimationFrame(animationId);
-                animationId = null;
-                main();
-                mask();
-            } else {
-                main(rate);
-                mask(rate);
-                animationId = requestAnimationFrame(() => { animate(main, mask) });
+        let currentImageData = null;
+        // JS->C# for common api android and ios----------------------------------------------------------------------
+        function startNativeCamera() {
+            if (window.Android) {
+                window.Android.startNativeCamera();
+            } else if (window.webkit && window.webkit.messageHandlers) {
+                window.webkit.messageHandlers.ios.postMessage("startNativeCamera");
             }
         }
-
-        function updateMainCanvas(rate = 1) {
-            // 画像：クリア
-            mainCtx.save();
-            mainCtx.setTransform(1, 0, 0, 1, 0, 0);
-            mainCtx.clearRect(0, 0, mainCanvas.width, mainCanvas.height);
-            mainCtx.fillRect(0, 0, mainCanvas.width, mainCanvas.height);
-            mainCtx.restore();
-            // 画像：マトリックス設定
-            const transform = mainCtx.getTransform();
-            a = touch.a + touchDelta.a * rate;
-            d = touch.d + touchDelta.d * rate;
-            e = touch.e + touchDelta.e * rate;
-            f = touch.f + touchDelta.f * rate;
-            rad = touch.rad + touchDelta.rad;
-            mainCtx.setTransform(
-                Math.cos(rad) * a,  //a
-                Math.sin(rad) * a,  //b
-                -Math.sin(rad) * d, //c
-                Math.cos(rad) * d,  //d
-                e,                  //e
-                f                   //f
-            );
-            // 画像：描画
-            mainCtx.drawImage(img, touch.imgX + touchDelta.imgX * rate, touch.imgY + touchDelta.imgY * rate);
-        }
-
-        function updateMaskCanvas(rate = 1) {
-            // マスク描画：クリア
-            maskCtx.clearRect(0, 0, maskCanvas.width, maskCanvas.height);
-            // マスク描画：無効領域
-            maskCtx.fillRect(0, 0, maskCanvas.width, maskCanvas.height);
-            // マスク描画：有効領域
-            maskCtx.clearRect(
-                maskRect.left + maskRectDelta.left * rate,
-                maskRect.top + maskRectDelta.top * rate,
-                maskRect.width + maskRectDelta.width * rate,
-                maskRect.height + maskRectDelta.height * rate
-            );
-        }
-
-        function setMaskRect(left, top, right, bottom) {
-            left = parseFloat(left);
-            top = parseFloat(top);
-            right = parseFloat(right);
-            bottom = parseFloat(bottom);
-
-            if ((right - left) < 60) {
-                right = left + 60;
+        function startNativeAlbum() {
+            if (window.Android) {
+                window.Android.startNativeAlbum();
+            } else if (window.webkit && window.webkit.messageHandlers) {
+                window.webkit.messageHandlers.ios.postMessage("startNativeAlbum");
             }
-            if ((bottom - top) < 60) {
-                bottom = top + 60;
-            }
-
-            // 更新显示值
-            leftValue.textContent = parseInt(left);
-            topValue.textContent = parseInt(top);
-            rightValue.textContent = parseInt(right);
-            bottomValue.textContent = parseInt(bottom);
-            // 更新值
-            leftSlider.value = left;
-            topSlider.value = top;
-            rightSlider.value = right;
-            bottomSlider.value = bottom;
-
-            maskRect.left = left;
-            maskRect.top = top;
-            maskRect.right = right;
-            maskRect.bottom = bottom;
-            maskRect.width = right - left;
-            maskRect.height = bottom - top;
-            maskRect.centerX = (left + right) / 2;
-            maskRect.centerY = (top + bottom) / 2;
         }
-
-        function _getCanvasMaxRect(canvas, rect) {
-            const scale = Math.min(canvas.width / rect.width, canvas.height / rect.height);
-            const maxCenterX = canvas.width / 2;
-            const maxCenterY = canvas.height / 2;
-            const maxRect = {};
-            maxRect.left = maxCenterX - rect.width * scale / 2;
-            maxRect.top = maxCenterY - rect.height * scale / 2;
-            maxRect.right = maxCenterX + rect.width * scale / 2;
-            maxRect.bottom = maxCenterY + rect.height * scale / 2;
-            maxRect.width = maxRect.right - maxRect.left;
-            maxRect.height = maxRect.bottom - maxRect.top;
-            maxRect.centerX = maxCenterX;
-            maxRect.centerY = maxCenterY;
-            return maxRect;
+        function startSpeechRecognition() {
+            if (window.Android) {
+                window.Android.startSpeechRecognition();
+            } else if (window.webkit && window.webkit.messageHandlers) {
+                window.webkit.messageHandlers.ios.postMessage("startSpeechRecognition");
+            }
         }
-
-        function _getInverseCoords(x, y, m) {
-            const det = m.a * m.d - m.b * m.c;
-
-            if (Math.abs(det) < 1e-10) return null;
-
-            const invDet = 1 / det;
-            const invA = m.d * invDet;
-            const invB = -m.b * invDet;
-            const invC = -m.c * invDet;
-            const invD = m.a * invDet;
-            const invE = -(m.e * invA + m.f * invC);
-            const invF = -(m.e * invB + m.f * invD);
-
-            inverse = {
-                a: invA, b: invB,
-                c: invC, d: invD,
-                e: invE, f: invF
-            };
-
-            return {
-                x: inverse.a * x + inverse.c * y + inverse.e,
-                y: inverse.b * x + inverse.d * y + inverse.f
-            };
-
+        function saveImage() {
+            if (window.Android) {
+                window.Android.saveImage(currentImageData);
+                document.getElementById('preview').src = null;
+                document.getElementById('cameraInput').value = ''
+                document.getElementById('albumInput').value = ''
+            } else if (window.webkit && window.webkit.messageHandlers) {
+                window.webkit.messageHandlers.ios.postMessage("saveImage");
+                document.getElementById('preview').src = null;
+                document.getElementById('cameraInput').value = ''
+                document.getElementById('albumInput').value = ''
+            }
         }
-
-        function _getDistance(touch1, touch2) {
-            const dx = touch2.clientX - touch1.clientX;
-            const dy = touch2.clientY - touch1.clientY;
-            return Math.sqrt(dx * dx + dy * dy);
+        function PopModal() {
+            if (window.Android) {
+                window.Android.PopModal();
+            } else if (window.webkit && window.webkit.messageHandlers) {
+                window.webkit.messageHandlers.ios.postMessage("PopModal");
+            }
         }
-
-        function _getAngle(touch1, touch2) {
-            const dx = touch2.clientX - touch1.clientX;
-            const dy = touch2.clientY - touch1.clientY;
-            return Math.atan2(dy, dx);
+        // C#->JS for common api android and ios----------------------------------------------------------------------
+        function showImage(uri) {
+            const preview = document.getElementById('preview');
+            preview.src = uri;
+            preview.style.display = 'block';
+            currentImageData = uri;
+            document.getElementById('downloadBtn').style.display = 'block';
         }
-
-    </script>
-
-    <script>
-        // タッチ：押下
-        maskCanvas.addEventListener('touchstart', function (e) {
-            e.preventDefault();
-
-            isDragging = true;
-
-            if (e.touches.length === 1) {
-                tmp.preX = e.touches[0].clientX;
-                tmp.preY = e.touches[0].clientY;
-            } else if (e.touches.length == 2) {
-                tmp.preX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
-                tmp.preY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
-                tmp.preDistance = _getDistance(e.touches[0], e.touches[1]);
-                tmp.preAngle = _getAngle(e.touches[0], e.touches[1]);
+        function showText(text) {
+            document.getElementById('previewText').innerText = text || 'No speech recognized';
+        }
+        // C#->JS for input file Android----------------------------------------------------------------------
+        function showPicture(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    const img = document.getElementById('preview');
+                    img.src = e.target.result;
+                    img.style.display = 'block';
+                    currentImageData = e.target.result;
+                    document.getElementById('downloadBtn').style.display = 'block';
+                };
+                reader.readAsDataURL(file);
             }
-
-
-        });
-
-        // タッチ：移動
-        maskCanvas.addEventListener('touchmove', function (e) {
-            e.preventDefault();
-
-            if (!isDragging) return;
-
-            let E = 0, F = 0, A = 0, D = 0;
-
-            if (e.touches.length === 1) {
-                E = e.touches[0].clientX - tmp.preX;
-                F = e.touches[0].clientY - tmp.preY;
-
-                touchDelta.e += E;
-                touchDelta.f += F;
-
-                tmp.preX = e.touches[0].clientX;
-                tmp.preY = e.touches[0].clientY;
-
-            } else if (e.touches.length == 2) {
-                const touchX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
-                const touchY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
-                const touchDistance = _getDistance(e.touches[0], e.touches[1]);
-                const touchAngle = _getAngle(e.touches[0], e.touches[1]) - tmp.preAngle;
-
-                E = touchX - tmp.preX;
-                F = touchY - tmp.preY;
-                A = (touchDistance - tmp.preDistance) / tmp.preDistance;
-                D = A;
-                RAD = touchAngle;
-
-                tmp.preX = touchX;
-                tmp.preY = touchY;
-
-                const rect = maskCanvas.getBoundingClientRect();
-                const centerX = touchX - rect.left;
-                const centerY = touchY - rect.top;
-                const drawXY = _getInverseCoords(centerX, centerY, mainCtx.getTransform());
-
-                touchDelta.e += centerX - (touch.e + touchDelta.e);
-                touchDelta.f += centerY - (touch.f + touchDelta.f);
-                touchDelta.imgX -= drawXY.x;
-                touchDelta.imgY -= drawXY.y;
-
-                touchDelta.e += E;
-                touchDelta.f += F;
-                touchDelta.a += A;
-                touchDelta.d += D;
-                touchDelta.rad += RAD;
-
-            }
-
-            updateMainCanvas();
-        });
-
-        // タッチ：アップ
-        maskCanvas.addEventListener('touchend', function (e) {
-            e.preventDefault();
-            isDragging = false;
-        });
-
-        // タッチ：キャンセル
-        maskCanvas.addEventListener('touchcancel', function (e) {
-            e.preventDefault();
-            isDragging = false;
-        });
-
-    </script>
-
-    <script>
-        // マウス：押下
-        maskCanvas.addEventListener('mousedown', function (e) {
-            isDragging = true;
-            tmp.preX = e.clientX;
-            tmp.preY = e.clientY;
-        });
-
-        // マウス：移動
-        maskCanvas.addEventListener('mousemove', function (e) {
-            if (isDragging) {
-                let E = 0, F = 0;
-                E = e.clientX - tmp.preX;
-                F = e.clientY - tmp.preY;
-
-                touchDelta.e += E;
-                touchDelta.f += F;
-
-                updateMainCanvas();
-
-                tmp.preX = e.clientX;
-                tmp.preY = e.clientY;
-            }
-        });
-
-        // マウス：アップ
-        maskCanvas.addEventListener('mouseup', function () {
-            isDragging = false;
-        });
-
-        // マウス：離し
-        maskCanvas.addEventListener('mouseout', function () {
-            isDragging = false;
-        });
-
-        // マウス：スクロール
-        maskCanvas.addEventListener('wheel', function (e) {
-            e.preventDefault();
-            e.stopPropagation();
-
-            const rect = maskCanvas.getBoundingClientRect();
-            const centerX = e.clientX - rect.left;
-            const centerY = e.clientY - rect.top;
-            const drawXY = _getInverseCoords(centerX, centerY, mainCtx.getTransform());
-
-            touchDelta.e += centerX - (touch.e + touchDelta.e);
-            touchDelta.f += centerY - (touch.f + touchDelta.f);
-            touchDelta.imgX -= drawXY.x;
-            touchDelta.imgY -= drawXY.y;
-
-            let A = 0, D = 0;
-            if (e.deltaY < 0) {
-                A += 0.03;
-                D += 0.03;
-            } else if (e.deltaY > 0) {
-                A -= 0.03;
-                D -= 0.03;
-            }
-
-            let RAD = 0;
-            if (e.deltaX < 0) {
-                RAD = Math.PI / 180;
-            } else if (e.deltaX > 0) {
-                RAD = -Math.PI / 180;
-            }
-
-            touchDelta.a += A;
-            touchDelta.d += D;
-            touchDelta.rad += RAD;
-
-            updateMainCanvas();
-        });
-
-    </script>
-
-    <script>
-        img.onload = function () {
-            const scale = Math.max(mainCanvas.width / img.width, mainCanvas.height / img.height);
-            touch.imgX = -img.width / 2;
-            touch.imgY = -img.height / 2;
-            touch.e = mainCanvas.width / 2;
-            touch.f = mainCanvas.height / 2;
-            touch.a = scale;
-            touch.d = scale;
-            updateMainCanvas();
-
-            const width = Math.min(img.width * scale, mainCanvas.width);
-            const height = Math.min(img.height * scale, mainCanvas.height);
-            const left = (maskCanvas.width - width) / 2;
-            const top = (maskCanvas.height - height) / 2;
-            const right = left + width;
-            const bottom = top + height;
-
-            setMaskRect(left, top, right, bottom)
-            updateMaskCanvas();
-        };
-
-        img.onerror = function () {
-            console.error('图片加载失败');
-            maskCtx.fillStyle = 'red';
-            maskCtx.font = '20px Arial';
-            maskCtx.fillText('图片加载失败', 10, 50);
-        };
-
-        // スライドバー
-        [leftSlider, topSlider, rightSlider, bottomSlider].forEach(slider => {
-            slider.addEventListener('input', () => {
-                const left = leftSlider.value;
-                const top = topSlider.value;
-                const right = rightSlider.value;
-                const bottom = bottomSlider.value;
-                setMaskRect(left, top, right, bottom)
-                updateMaskCanvas();
-            });
-        });
-
-        // ボタン：確定
-        maximizeButton.addEventListener('click', confirm_clicked);
-        testButton.addEventListener('click', test_clicked);
-
+        }
+        document.getElementById('cameraInput').addEventListener('change', showPicture);
+        document.getElementById('albumInput').addEventListener('change', showPicture);
     </script>
 </body>
 
