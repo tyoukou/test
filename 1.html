@@ -19,14 +19,18 @@
 
         .canvas-container {
             position: relative;
-            width: 800px;
-            height: 600px;
+            width: 90%;
+            ;
+            height: 400px;
+            background: red;
         }
 
         canvas {
             position: absolute;
-            top: 0;
-            left: 0;
+            top: 0%;
+            left: 0%;
+            width: 100%;
+            height: 100%;
             border: 1px solid #000;
         }
 
@@ -68,8 +72,8 @@
 
 <body>
     <div class="canvas-container">
-        <canvas id="mainCanvas" width="800" height="600"></canvas>
-        <canvas id="maskCanvas" width="800" height="600"></canvas>
+        <canvas id="mainCanvas"></canvas>
+        <canvas id="maskCanvas"></canvas>
     </div>
     <div class="controls">
         <div>
@@ -95,12 +99,12 @@
         <button id="maximizeButton">确定</button>
     </div>
     <script>
+        // キャンバス
         const mainCanvas = document.getElementById('mainCanvas');
         const maskCanvas = document.getElementById('maskCanvas');
         const mainCtx = mainCanvas.getContext('2d');
         const maskCtx = maskCanvas.getContext('2d');
-
-        // 获取滑块和显示值的元素
+        // タッチ
         const leftSlider = document.getElementById('leftSlider');
         const topSlider = document.getElementById('topSlider');
         const rightSlider = document.getElementById('rightSlider');
@@ -110,83 +114,144 @@
         const rightValue = document.getElementById('rightValue');
         const bottomValue = document.getElementById('bottomValue');
         const maximizeButton = document.getElementById('maximizeButton');
-
-        // マスクエリア
-        const maskRect = {};
-        const touchInfo = { rad: 0 };
-        const drawInfo = {};
-
-        let isDragging = false;
+        //　画像読み込み
+        // const dpr = window.devicePixelRatio || 1;
+        const dpr = 1;
+        const container = document.querySelector('.canvas-container');
+        const width = container.clientWidth;
+        const height = container.clientHeight;
+        mainCanvas.width = width * dpr;
+        mainCanvas.height = height * dpr;
         mainCtx.fillStyle = 'white';
+        maskCanvas.width = width * dpr;
+        maskCanvas.height = height * dpr;
         maskCtx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-
-        // 加载图片
         const img = new Image();
         img.crossOrigin = "Anonymous";
         img.src = 'https://img-s-msn-com.akamaized.net/tenant/amp/entityid/AA1FkVgF.img';
+    </script>
 
-        function updateMainCanvas(e, f, a, d, rad) {
-            // 画像：クリア
-            mainCtx.save();
-            mainCtx.setTransform(1, 0, 0, 1, 0, 0);
-            mainCtx.clearRect(0, 0, mainCanvas.width, mainCanvas.height);
-            mainCtx.fillRect(0, 0, mainCanvas.width, mainCanvas.height);
-            mainCtx.restore();
+    <script>
+        const touch = { a: 1, d: 1, e: 0, f: 0, rad: 0, imgX: 0, imgY: 0 };
+        const touchDelta = { a: 0, d: 0, e: 0, f: 0, rad: 0, imgX: 0, imgY: 0 };
+        const maskRect = { left: 0, top: 0, right: 0, bottom: 0, width: 0, height: 0, centerX: 0, centerY: 0 };
+        const maskRectDelta = { left: 0, top: 0, right: 0, bottom: 0, width: 0, height: 0, centerX: 0, centerY: 0 };
+        let isDragging = false, animateRate = 0, animationId;
+        const tmp = {};
 
-            const transform = mainCtx.getTransform();
-            transform.a += a * Math.cos(rad);
-            transform.d += d * Math.cos(rad);
-            transform.e += e;
-            transform.f += f;
-            transform.b += a * Math.sin(rad);
-            transform.c += -d * Math.sin(rad);;
-            mainCtx.setTransform(transform);
-            mainCtx.drawImage(img, drawInfo.offsetX, drawInfo.offsetY);
-        }
+        function confirm_clicked() {
+            if (animateRate > 0) return;
 
-        function updateMaskCanvas() {
-            // マスク領域：クリア
-            maskCtx.clearRect(0, 0, maskCanvas.width, maskCanvas.height);
-            // 無効領域：描画
-            maskCtx.fillRect(0, 0, maskCanvas.width, maskCanvas.height);
-            // 有効領域：描画
-            maskCtx.clearRect(maskRect.left, maskRect.top, maskRect.width, maskRect.height);
-        }
+            touch.a += touchDelta.a;
+            touch.d += touchDelta.d;
+            touch.e += touchDelta.e;
+            touch.f += touchDelta.f;
+            touch.rad += touchDelta.rad;
+            touch.imgX += touchDelta.imgX;
+            touch.imgY += touchDelta.imgY;
 
-        function maximizeRect() {
-            const maxRect = getCanvasMaxRect(maskCanvas, maskRect);
+            touchDelta.a = 0;
+            touchDelta.d = 0;
+            touchDelta.e = 0;
+            touchDelta.f = 0;
+            touchDelta.rad = 0;
+            touchDelta.imgX = 0;
+            touchDelta.imgY = 0;
 
-            // 画像：クリア
-            mainCtx.save();
-            mainCtx.setTransform(1, 0, 0, 1, 0, 0);
-            mainCtx.clearRect(0, 0, mainCanvas.width, mainCanvas.height);
-            mainCtx.fillRect(0, 0, mainCanvas.width, mainCanvas.height);
-            mainCtx.restore();
 
-            // // 画像：移動
-            const transform = mainCtx.getTransform();
-            const inverse = getInverseMatrix(transform);
-            const tXY = screenToObjectCoords((maxRect.centerX), (maxRect.centerY), inverse);
-            mainCtx.translate(tXY.x, tXY.y);
+            setMaskRect(
+                maskRect.left + maskRectDelta.left,
+                maskRect.top + maskRectDelta.top,
+                maskRect.right + maskRectDelta.right,
+                maskRect.bottom + maskRectDelta.bottom
+            );
 
-            // // 画像：回転
-            // mainCtx.translate(drawInfo.translateX, drawInfo.translateY);
+            maskRectDelta.left = 0;
+            maskRectDelta.top = 0;
+            maskRectDelta.right = 0;
+            maskRectDelta.bottom = 0;
+            maskRectDelta.width = 0;
+            maskRectDelta.height = 0;
+            maskRectDelta.centerX = 0;
+            maskRectDelta.centerY = 0;
 
-            // 画像：拡大縮小
+            const maxRect = _getCanvasMaxRect(maskCanvas, maskRect);
+            const imgXY = _getInverseCoords(maskRect.centerX, maskRect.centerY, mainCtx.getTransform());
             const scale = Math.min(maskCanvas.width / maskRect.width, maskCanvas.height / maskRect.height);
-            mainCtx.scale(scale, scale);
 
-            // 画像：描画(中心より)
-            const startXY = screenToObjectCoords(maskRect.centerX, maskRect.centerY, inverse);
-            drawInfo.offsetX += -startXY.x;
-            drawInfo.offsetY += -startXY.y;
-            mainCtx.drawImage(img, drawInfo.offsetX, drawInfo.offsetY);
+            touchDelta.e = maxRect.centerX - touch.e;
+            touchDelta.f = maxRect.centerY - touch.f;
+            touchDelta.a = (touchDelta.a + touch.a) * scale - touch.a;
+            touchDelta.d = (touchDelta.d + touch.d) * scale - touch.d;
+            touchDelta.imgX = -imgXY.x;
+            touchDelta.imgY = -imgXY.y;
 
-            // マスク：値更新
-            setMaskRect(maxRect.left, maxRect.top, maxRect.right, maxRect.bottom);
+            maskRectDelta.left = maxRect.left - maskRect.left;
+            maskRectDelta.top = maxRect.top - maskRect.top;
+            maskRectDelta.right = maxRect.right - maskRect.right;
+            maskRectDelta.bottom = maxRect.bottom - maskRect.bottom;
+            maskRectDelta.width = maxRect.width - maskRect.width;
+            maskRectDelta.height = maxRect.height - maskRect.height;
+            maskRectDelta.centerX = maxRect.centerX - maskRect.centerX;
+            maskRectDelta.centerY = maxRect.botcenterYtom - maskRect.centerY;
 
-            // マスク：描画
-            updateMaskCanvas()
+            animate(updateMainCanvas, updateMaskCanvas);
+        }
+
+        function animate(main, mask) {
+            animateRate += 1;
+            rate = 1 / (1 + Math.exp(-(animateRate - 9)));
+            if (rate > 0.99) {
+                animateRate = 0;
+                cancelAnimationFrame(animationId);
+                animationId = null;
+                main();
+                mask();
+            } else {
+                main(rate);
+                mask(rate);
+                animationId = requestAnimationFrame(() => { animate(main, mask) });
+            }
+        }
+
+        function updateMainCanvas(rate = 1) {
+            // 画像：クリア
+            mainCtx.save();
+            mainCtx.setTransform(1, 0, 0, 1, 0, 0);
+            mainCtx.clearRect(0, 0, mainCanvas.width, mainCanvas.height);
+            mainCtx.fillRect(0, 0, mainCanvas.width, mainCanvas.height);
+            mainCtx.restore();
+            // 画像：マトリックス設定
+            const transform = mainCtx.getTransform();
+            a = touch.a + touchDelta.a * rate;
+            d = touch.d + touchDelta.d * rate;
+            e = touch.e + touchDelta.e * rate;
+            f = touch.f + touchDelta.f * rate;
+            rad = touch.rad + touchDelta.rad;
+            mainCtx.setTransform(
+                Math.cos(rad) * a,  //a
+                Math.sin(rad) * a,  //b
+                -Math.sin(rad) * d, //c
+                Math.cos(rad) * d,  //d
+                e,                  //e
+                f                   //f
+            );
+            // 画像：描画
+            mainCtx.drawImage(img, touch.imgX + touchDelta.imgX * rate, touch.imgY + touchDelta.imgY * rate);
+        }
+
+        function updateMaskCanvas(rate = 1) {
+            // マスク描画：クリア
+            maskCtx.clearRect(0, 0, maskCanvas.width, maskCanvas.height);
+            // マスク描画：無効領域
+            maskCtx.fillRect(0, 0, maskCanvas.width, maskCanvas.height);
+            // マスク描画：有効領域
+            maskCtx.clearRect(
+                maskRect.left + maskRectDelta.left * rate,
+                maskRect.top + maskRectDelta.top * rate,
+                maskRect.width + maskRectDelta.width * rate,
+                maskRect.height + maskRectDelta.height * rate
+            );
         }
 
         function setMaskRect(left, top, right, bottom) {
@@ -194,16 +259,14 @@
             top = parseFloat(top);
             right = parseFloat(right);
             bottom = parseFloat(bottom);
-            // エッジチェック
-            if (right <= left || bottom <= top) {
-                maskCtx.clearRect(0, 0, maskCanvas.width, maskCanvas.height);
-                maskCtx.save();
-                maskCtx.fillStyle = 'red';
-                maskCtx.font = '20px Arial';
-                maskCtx.fillText('エリア無効', 10, 50);
-                maskCtx.restore();
-                return false;
+
+            if ((right - left) < 60) {
+                right = left + 60;
             }
+            if ((bottom - top) < 60) {
+                bottom = top + 60;
+            }
+
             // 更新显示值
             leftValue.textContent = parseInt(left);
             topValue.textContent = parseInt(top);
@@ -223,10 +286,9 @@
             maskRect.height = bottom - top;
             maskRect.centerX = (left + right) / 2;
             maskRect.centerY = (top + bottom) / 2;
-            return true;
         }
 
-        function getCanvasMaxRect(canvas, rect) {
+        function _getCanvasMaxRect(canvas, rect) {
             const scale = Math.min(canvas.width / rect.width, canvas.height / rect.height);
             const maxCenterX = canvas.width / 2;
             const maxCenterY = canvas.height / 2;
@@ -242,11 +304,11 @@
             return maxRect;
         }
 
-        function getInverseMatrix(m) {
+        function _getInverseCoords(x, y, m) {
             const det = m.a * m.d - m.b * m.c;
-            if (Math.abs(det) < 1e-10) {
-                return null;
-            }
+
+            if (Math.abs(det) < 1e-10) return null;
+
             const invDet = 1 / det;
             const invA = m.d * invDet;
             const invB = -m.b * invDet;
@@ -254,120 +316,147 @@
             const invD = m.a * invDet;
             const invE = -(m.e * invA + m.f * invC);
             const invF = -(m.e * invB + m.f * invD);
-            return {
+
+            inverse = {
                 a: invA, b: invB,
                 c: invC, d: invD,
                 e: invE, f: invF
             };
-        }
 
-        function screenToObjectCoords(x, y, invertedMatrix) {
             return {
-                x: invertedMatrix.a * x + invertedMatrix.c * y + invertedMatrix.e,
-                y: invertedMatrix.b * x + invertedMatrix.d * y + invertedMatrix.f
+                x: inverse.a * x + inverse.c * y + inverse.e,
+                y: inverse.b * x + inverse.d * y + inverse.f
             };
 
         }
 
-        function getMatrixBC(angle) {
-            // [sx*cos(θ)  -sy*sin(θ)  tx] 
-            // [sx*sin(θ)   sy*cos(θ)  ty]
-            // [   0          0        1]            
-            const rad = angle * Math.PI / 180;
-            return {
-                b: Math.sin(rad),
-                c: -Math.sin(rad)
-            };
+        function _getDistance(touch1, touch2) {
+            const dx = touch2.clientX - touch1.clientX;
+            const dy = touch2.clientY - touch1.clientY;
+            return Math.sqrt(dx * dx + dy * dy);
         }
-        img.onload = function () {
-            // 初始绘制背景图片
-            const scale = Math.min(mainCanvas.width / img.width, mainCanvas.height / img.height);
-            drawInfo.offsetX = -img.width / 2;
-            drawInfo.offsetY = -img.height / 2;
-            mainCtx.translate(mainCanvas.width / 2, mainCanvas.height / 2);
-            mainCtx.scale(scale, scale);
-            mainCtx.clearRect(-mainCanvas.width / 2 / scale, -mainCanvas.height / 2 / scale, mainCanvas.width / scale, mainCanvas.height / scale);
-            mainCtx.fillRect(-mainCanvas.width / 2 / scale, -mainCanvas.height / 2 / scale, mainCanvas.width / scale, mainCanvas.height / scale);
-            mainCtx.drawImage(img, -img.width / 2, -img.height / 2);
 
-            // 初始绘制蒙版画布
-            const left = (maskCanvas.width - img.width * scale) / 2;
-            const top = (maskCanvas.height - img.height * scale) / 2;
-            const right = left + img.width * scale;
-            const bottom = top + img.height * scale;
-            if (setMaskRect(left, top, right, bottom)) {
-                updateMaskCanvas();
+        function _getAngle(touch1, touch2) {
+            const dx = touch2.clientX - touch1.clientX;
+            const dy = touch2.clientY - touch1.clientY;
+            return Math.atan2(dy, dx);
+        }
+
+    </script>
+
+    <script>
+        // タッチ：押下
+        maskCanvas.addEventListener('touchstart', function (e) {
+            e.preventDefault();
+
+            isDragging = true;
+
+            if (e.touches.length === 1) {
+                tmp.preX = e.touches[0].clientX;
+                tmp.preY = e.touches[0].clientY;
+            } else if (e.touches.length == 2) {
+                tmp.preX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+                tmp.preY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+                tmp.preScale = _getDistance(e.touches[0], e.touches[1]);
+                tmp.preAngle = _getAngle(e.touches[0], e.touches[1]);
             }
-        };
 
-        img.onerror = function () {
-            console.error('图片加载失败');
-            maskCtx.fillStyle = 'red';
-            maskCtx.font = '20px Arial';
-            maskCtx.fillText('图片加载失败', 10, 50);
-        };
 
-        // 为滑块添加事件监听器
-        [leftSlider, topSlider, rightSlider, bottomSlider].forEach(slider => {
-            slider.addEventListener('input', () => {
-                // 获取滑块值
-                const left = leftSlider.value;
-                const top = topSlider.value;
-                const right = rightSlider.value;
-                const bottom = bottomSlider.value;
-                if (setMaskRect(left, top, right, bottom)) {
-                    updateMaskCanvas();
-                }
-            });
         });
 
+        // タッチ：移動
+        maskCanvas.addEventListener('touchmove', function (e) {
+            e.preventDefault();
+
+            if (!isDragging) return;
+
+            let E = 0, F = 0, A = 0, D = 0;
+
+            if (e.touches.length === 1) {
+                E = e.touches[0].clientX - tmp.preX;
+                F = e.touches[0].clientY - tmp.preY;
+
+                touchDelta.e += E;
+                touchDelta.f += F;
+
+                tmp.preX = e.touches[0].clientX;
+                tmp.preY = e.touches[0].clientY;
+
+            } else if (e.touches.length == 2) {
+                const touchX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+                const touchY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+                const touchScale = _getDistance(e.touches[0], e.touches[1]) / tmp.preScale;
+                const touchAngle = _getAngle(e.touches[0], e.touches[1]) - tmp.preAngle;
+
+                E = touchX - tmp.preX;
+                F = touchY - tmp.preY;
+                A = (touch.a + touchDelta.a)(touchScale - 1);
+                D = (touch.a + touchDelta.a)(touchScale - 1);
+                RAD = touchAngle;
+
+                tmp.preX = touchX;
+                tmp.preY = touchY;
+                tmp.preScale = touchScale;
+                tmp.preAngle = touchAngle;
+
+                const rect = maskCanvas.getBoundingClientRect();
+                const centerX = touchX - rect.left;
+                const centerY = touchY - rect.top;
+                const drawXY = _getInverseCoords(centerX, centerY, mainCtx.getTransform());
+
+                touchDelta.e += centerX - (touch.e + touchDelta.e);
+                touchDelta.f += centerY - (touch.f + touchDelta.f);
+                touchDelta.imgX -= drawXY.x;
+                touchDelta.imgY -= drawXY.y;
+
+                touchDelta.e += E;
+                touchDelta.f += F;
+                touchDelta.a += A;
+                touchDelta.d += D;
+                touchDelta.rad += RAD;
+
+            }
+
+            updateMainCanvas();
+        });
+
+        // タッチ：アップ
+        maskCanvas.addEventListener('touchend', function (e) {
+            e.preventDefault();
+            isDragging = false;
+        });
+
+        // タッチ：キャンセル
+        maskCanvas.addEventListener('touchcancel', function (e) {
+            e.preventDefault();
+            isDragging = false;
+        });
+
+    </script>
+
+    <script>
         // マウス：押下
         maskCanvas.addEventListener('mousedown', function (e) {
             isDragging = true;
-            touchInfo.pX = e.clientX;
-            touchInfo.pY = e.clientY;
+            tmp.preX = e.clientX;
+            tmp.preY = e.clientY;
         });
 
         // マウス：移動
         maskCanvas.addEventListener('mousemove', function (e) {
             if (isDragging) {
-                const offsetE = e.clientX - touchInfo.pX;
-                const offsetF = e.clientY - touchInfo.pY;
-                const offsetA = 0;
-                const offsetD = 0;
-                touchInfo.pX = e.clientX;
-                touchInfo.pY = e.clientY;
-                updateMainCanvas(offsetE, offsetF, offsetA, offsetD, 0);
+                let E = 0, F = 0;
+                E = e.clientX - tmp.preX;
+                F = e.clientY - tmp.preY;
+
+                touchDelta.e += E;
+                touchDelta.f += F;
+
+                updateMainCanvas();
+
+                tmp.preX = e.clientX;
+                tmp.preY = e.clientY;
             }
-        });
-
-        // マウス：スクロール
-        maskCanvas.addEventListener('wheel', function (e) {
-            e.preventDefault();
-            e.stopPropagation();
-
-            const rect = maskCanvas.getBoundingClientRect();
-            touchInfo.cX = e.clientX - rect.left;
-            touchInfo.cY = e.clientY - rect.top;
-
-            const offsetE = 0;
-            const offsetF = 0;
-            let offsetA = 0;
-            let offsetD = 0;
-            if (e.deltaY < 0) {
-                offsetA = 0.03;
-                offsetD = 0.03;
-            } else {
-                offsetA = -0.03;
-                offsetD = -0.03;
-            }
-
-            if (e.deltaX < 0) {
-                touchInfo.rad += 0.03 * Math.PI / 180;
-            } else {
-                touchInfo.rad += -0.03 * Math.PI / 180;
-            }
-            updateMainCanvas(offsetE, offsetF, offsetA, offsetD, touchInfo.rad);
         });
 
         // マウス：アップ
@@ -380,8 +469,90 @@
             isDragging = false;
         });
 
+        // マウス：スクロール
+        maskCanvas.addEventListener('wheel', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const rect = maskCanvas.getBoundingClientRect();
+            const centerX = e.clientX - rect.left;
+            const centerY = e.clientY - rect.top;
+            const drawXY = _getInverseCoords(centerX, centerY, mainCtx.getTransform());
+
+            touchDelta.e += centerX - (touch.e + touchDelta.e);
+            touchDelta.f += centerY - (touch.f + touchDelta.f);
+            touchDelta.imgX -= drawXY.x;
+            touchDelta.imgY -= drawXY.y;
+
+            let A = 0, D = 0;
+            if (e.deltaY < 0) {
+                A += 0.03;
+                D += 0.03;
+            } else if (e.deltaY > 0) {
+                A -= 0.03;
+                D -= 0.03;
+            }
+
+            let RAD = 0;
+            if (e.deltaX < 0) {
+                RAD = Math.PI / 180;
+            } else if (e.deltaX > 0) {
+                RAD = -Math.PI / 180;
+            }
+
+            touchDelta.a += A;
+            touchDelta.d += D;
+            touchDelta.rad += RAD;
+
+            updateMainCanvas();
+        });
+
+    </script>
+
+    <script>
+        img.onload = function () {
+            const scale = Math.max(mainCanvas.width / img.width, mainCanvas.height / img.height);
+            touch.imgX = -img.width / 2;
+            touch.imgY = -img.height / 2;
+            touch.e = mainCanvas.width / 2;
+            touch.f = mainCanvas.height / 2;
+            touch.a = scale;
+            touch.d = scale;
+            updateMainCanvas();
+
+            const width = Math.min(img.width * scale, mainCanvas.width);
+            const height = Math.min(img.height * scale, mainCanvas.height);
+            const left = (maskCanvas.width - width) / 2;
+            const top = (maskCanvas.height - height) / 2;
+            const right = left + width;
+            const bottom = top + height;
+
+            setMaskRect(left, top, right, bottom)
+            updateMaskCanvas();
+        };
+
+        img.onerror = function () {
+            console.error('图片加载失败');
+            maskCtx.fillStyle = 'red';
+            maskCtx.font = '20px Arial';
+            maskCtx.fillText('图片加载失败', 10, 50);
+        };
+
+        // スライドバー
+        [leftSlider, topSlider, rightSlider, bottomSlider].forEach(slider => {
+            slider.addEventListener('input', () => {
+                const left = leftSlider.value;
+                const top = topSlider.value;
+                const right = rightSlider.value;
+                const bottom = bottomSlider.value;
+                setMaskRect(left, top, right, bottom)
+                updateMaskCanvas();
+            });
+        });
+
         // ボタン：確定
-        maximizeButton.addEventListener('click', maximizeRect);        
+        maximizeButton.addEventListener('click', confirm_clicked);
+
     </script>
 </body>
 
