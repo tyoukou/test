@@ -97,6 +97,7 @@
             <span id="bottomValue">600</span>
         </div>
         <button id="maximizeButton">确定</button>
+        <button id="testButton">TEST</button>
     </div>
     <script>
         // キャンバス
@@ -114,6 +115,8 @@
         const rightValue = document.getElementById('rightValue');
         const bottomValue = document.getElementById('bottomValue');
         const maximizeButton = document.getElementById('maximizeButton');
+        const testButton = document.getElementById('testButton');
+
         //　画像読み込み
         // const dpr = window.devicePixelRatio || 1;
         const dpr = 1;
@@ -138,6 +141,42 @@
         const maskRectDelta = { left: 0, top: 0, right: 0, bottom: 0, width: 0, height: 0, centerX: 0, centerY: 0 };
         let isDragging = false, animateRate = 0, animationId;
         const tmp = {};
+
+        function test_clicked() {
+            _test_clicked("touchstart", 3)
+
+            for (i = 2; i < 10; i++) {
+                _test_clicked("touchmove", i * 3)
+            }
+            _test_clicked("touchend", 10)
+        }
+
+        function _test_clicked(str, delta) {
+            const touch1 = new Touch({
+                identifier: 0,
+                target: maskCanvas,
+                clientX: 173.5 - 50 - delta,
+                clientY: 200,
+                radiusX: 10,
+                radiusY: 10
+            });
+
+            const touch2 = new Touch({
+                identifier: 1,
+                target: maskCanvas,
+                clientX: 173.5 + 50 + delta,
+                clientY: 200,
+                radiusX: 10,
+                radiusY: 10
+            });
+            const touchStartEvent = new TouchEvent(str, {
+                touches: [touch1, touch2],
+                changedTouches: [touch1, touch2],
+                bubbles: true,
+                cancelable: true
+            });
+            maskCanvas.dispatchEvent(touchStartEvent);
+        }
 
         function confirm_clicked() {
             if (animateRate > 0) return;
@@ -357,7 +396,7 @@
             } else if (e.touches.length == 2) {
                 tmp.preX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
                 tmp.preY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
-                tmp.preScale = _getDistance(e.touches[0], e.touches[1]);
+                tmp.preDistance = _getDistance(e.touches[0], e.touches[1]);
                 tmp.preAngle = _getAngle(e.touches[0], e.touches[1]);
             }
 
@@ -385,19 +424,17 @@
             } else if (e.touches.length == 2) {
                 const touchX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
                 const touchY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
-                const touchScale = _getDistance(e.touches[0], e.touches[1]) / tmp.preScale;
+                const touchDistance = _getDistance(e.touches[0], e.touches[1]);
                 const touchAngle = _getAngle(e.touches[0], e.touches[1]) - tmp.preAngle;
 
                 E = touchX - tmp.preX;
                 F = touchY - tmp.preY;
-                A = (touch.a + touchDelta.a)(touchScale - 1);
-                D = (touch.a + touchDelta.a)(touchScale - 1);
+                A = (touchDistance - tmp.preDistance) / tmp.preDistance;
+                D = A;
                 RAD = touchAngle;
 
                 tmp.preX = touchX;
                 tmp.preY = touchY;
-                tmp.preScale = touchScale;
-                tmp.preAngle = touchAngle;
 
                 const rect = maskCanvas.getBoundingClientRect();
                 const centerX = touchX - rect.left;
@@ -552,6 +589,7 @@
 
         // ボタン：確定
         maximizeButton.addEventListener('click', confirm_clicked);
+        testButton.addEventListener('click', test_clicked);
 
     </script>
 </body>
