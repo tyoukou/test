@@ -1,5 +1,419 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+<script>
+    const touch = { a: 1, d: 1, e: 0, f: 0, rad: 0, imgX: 0, imgY: 0 };
+    const touchDelta = { a: 0, d: 0, e: 0, f: 0, rad: 0, imgX: 0, imgY: 0 };
+    const maskRect = { left: 0, top: 0, right: 0, bottom: 0, width: 0, height: 0, centerX: 0, centerY: 0 };
+    const maskRectDelta = { left: 0, top: 0, right: 0, bottom: 0, width: 0, height: 0, centerX: 0, centerY: 0 };
+    let isDragging = false, animateRate = 0, animationId;
+    const tmp = {};
+
+    function test_clicked() {
+        _test_clicked("touchstart", 3)
+
+        for (i = 2; i < 10; i++) {
+            _test_clicked("touchmove", i * 3)
+        }
+        _test_clicked("touchend", 10)
+    }
+
+
+    function confirm_clicked() {
+        if (animateRate > 0) return;
+
+        touch.a += touchDelta.a;
+        touch.d += touchDelta.d;
+        touch.e += touchDelta.e;
+        touch.f += touchDelta.f;
+        touch.rad += touchDelta.rad;
+        touch.imgX += touchDelta.imgX;
+        touch.imgY += touchDelta.imgY;
+
+        touchDelta.a = 0;
+        touchDelta.d = 0;
+        touchDelta.e = 0;
+        touchDelta.f = 0;
+        touchDelta.rad = 0;
+        touchDelta.imgX = 0;
+        touchDelta.imgY = 0;
+
+
+        setMaskRect(
+            maskRect.left + maskRectDelta.left,
+            maskRect.top + maskRectDelta.top,
+            maskRect.right + maskRectDelta.right,
+            maskRect.bottom + maskRectDelta.bottom
+        );
+
+        maskRectDelta.left = 0;
+        maskRectDelta.top = 0;
+        maskRectDelta.right = 0;
+        maskRectDelta.bottom = 0;
+        maskRectDelta.width = 0;
+        maskRectDelta.height = 0;
+        maskRectDelta.centerX = 0;
+        maskRectDelta.centerY = 0;
+
+        const maxRect = _getCanvasMaxRect(maskCanvas, maskRect);
+        const imgXY = _getInverseCoords(maskRect.centerX, maskRect.centerY, mainCtx.getTransform());
+        const scale = Math.min(maskCanvas.width / maskRect.width, maskCanvas.height / maskRect.height);
+
+        touchDelta.e = maxRect.centerX - touch.e;
+        touchDelta.f = maxRect.centerY - touch.f;
+        touchDelta.a = (touchDelta.a + touch.a) * scale - touch.a;
+        touchDelta.d = (touchDelta.d + touch.d) * scale - touch.d;
+        touchDelta.imgX = -imgXY.x;
+        touchDelta.imgY = -imgXY.y;
+
+        maskRectDelta.left = maxRect.left - maskRect.left;
+        maskRectDelta.top = maxRect.top - maskRect.top;
+        maskRectDelta.right = maxRect.right - maskRect.right;
+        maskRectDelta.bottom = maxRect.bottom - maskRect.bottom;
+        maskRectDelta.width = maxRect.width - maskRect.width;
+        maskRectDelta.height = maxRect.height - maskRect.height;
+        maskRectDelta.centerX = maxRect.centerX - maskRect.centerX;
+        maskRectDelta.centerY = maxRect.botcenterYtom - maskRect.centerY;
+
+        animate(updateMainCanvas, updateMaskCanvas);
+    }
+
+    function animate(main, mask) {
+        animateRate += 1;
+        rate = 1 / (1 + Math.exp(-(animateRate - 9)));
+        if (rate > 0.99) {
+            animateRate = 0;
+            cancelAnimationFrame(animationId);
+            animationId = null;
+            main();
+            mask();
+        } else {
+            main(rate);
+            mask(rate);
+            animationId = requestAnimationFrame(() => { animate(main, mask) });
+        }
+    }
+
+    function updateMainCanvas(rate = 1) {
+        // 画像：クリア
+        mainCtx.save();
+        mainCtx.setTransform(1, 0, 0, 1, 0, 0);
+        mainCtx.clearRect(0, 0, mainCanvas.width, mainCanvas.height);
+        mainCtx.fillRect(0, 0, mainCanvas.width, mainCanvas.height);
+        mainCtx.restore();
+        // 画像：マトリックス設定
+        const transform = mainCtx.getTransform();
+        a = touch.a + touchDelta.a * rate;
+        d = touch.d + touchDelta.d * rate;
+        e = touch.e + touchDelta.e * rate;
+        f = touch.f + touchDelta.f * rate;
+        rad = touch.rad + touchDelta.rad;
+        mainCtx.setTransform(
+            Math.cos(rad) * a,  //a
+            Math.sin(rad) * a,  //b
+            -Math.sin(rad) * d, //c
+            Math.cos(rad) * d,  //d
+            e,                  //e
+            f                   //f
+        );
+        // 画像：描画
+        mainCtx.drawImage(img, touch.imgX + touchDelta.imgX * rate, touch.imgY + touchDelta.imgY * rate);
+    }
+
+    function updateMaskCanvas(rate = 1) {
+        // マスク描画：クリア
+        maskCtx.clearRect(0, 0, maskCanvas.width, maskCanvas.height);
+        // マスク描画：無効領域
+        maskCtx.fillRect(0, 0, maskCanvas.width, maskCanvas.height);
+        // マスク描画：有効領域
+        maskCtx.clearRect(
+            maskRect.left + maskRectDelta.left * rate,
+            maskRect.top + maskRectDelta.top * rate,
+            maskRect.width + maskRectDelta.width * rate,
+            maskRect.height + maskRectDelta.height * rate
+        );
+    }
+
+    function setMaskRect(left, top, right, bottom) {
+        left = parseFloat(left);
+        top = parseFloat(top);
+        right = parseFloat(right);
+        bottom = parseFloat(bottom);
+
+        if ((right - left) < 60) {
+            right = left + 60;
+        }
+        if ((bottom - top) < 60) {
+            bottom = top + 60;
+        }
+
+        // 更新显示值
+        leftValue.textContent = parseInt(left);
+        topValue.textContent = parseInt(top);
+        rightValue.textContent = parseInt(right);
+        bottomValue.textContent = parseInt(bottom);
+        // 更新值
+        leftSlider.value = left;
+        topSlider.value = top;
+        rightSlider.value = right;
+        bottomSlider.value = bottom;
+
+        maskRect.left = left;
+        maskRect.top = top;
+        maskRect.right = right;
+        maskRect.bottom = bottom;
+        maskRect.width = right - left;
+        maskRect.height = bottom - top;
+        maskRect.centerX = (left + right) / 2;
+        maskRect.centerY = (top + bottom) / 2;
+    }
+
+    function _getCanvasMaxRect(canvas, rect) {
+        const scale = Math.min(canvas.width / rect.width, canvas.height / rect.height);
+        const maxCenterX = canvas.width / 2;
+        const maxCenterY = canvas.height / 2;
+        const maxRect = {};
+        maxRect.left = maxCenterX - rect.width * scale / 2;
+        maxRect.top = maxCenterY - rect.height * scale / 2;
+        maxRect.right = maxCenterX + rect.width * scale / 2;
+        maxRect.bottom = maxCenterY + rect.height * scale / 2;
+        maxRect.width = maxRect.right - maxRect.left;
+        maxRect.height = maxRect.bottom - maxRect.top;
+        maxRect.centerX = maxCenterX;
+        maxRect.centerY = maxCenterY;
+        return maxRect;
+    }
+
+    function _getInverseCoords(x, y, m) {
+        const det = m.a * m.d - m.b * m.c;
+
+        if (Math.abs(det) < 1e-10) return null;
+
+        const invDet = 1 / det;
+        const invA = m.d * invDet;
+        const invB = -m.b * invDet;
+        const invC = -m.c * invDet;
+        const invD = m.a * invDet;
+        const invE = -(m.e * invA + m.f * invC);
+        const invF = -(m.e * invB + m.f * invD);
+
+        inverse = {
+            a: invA, b: invB,
+            c: invC, d: invD,
+            e: invE, f: invF
+        };
+
+        return {
+            x: inverse.a * x + inverse.c * y + inverse.e,
+            y: inverse.b * x + inverse.d * y + inverse.f
+        };
+
+    }
+
+    function _getDistance(touch1, touch2) {
+        const dx = touch2.clientX - touch1.clientX;
+        const dy = touch2.clientY - touch1.clientY;
+        return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    function _getAngle(touch1, touch2) {
+        const dx = touch2.clientX - touch1.clientX;
+        const dy = touch2.clientY - touch1.clientY;
+        return Math.atan2(dy, dx);
+    }
+
+</script>
+
+<script>
+    function _test_clicked(str, delta) {
+        const touch1 = new Touch({
+            identifier: 0,
+            target: maskCanvas,
+            clientX: 173.5 - 50 - delta,
+            clientY: 200 - delta,
+            radiusX: 10,
+            radiusY: 10
+        });
+
+        const touch2 = new Touch({
+            identifier: 1,
+            target: maskCanvas,
+            clientX: 173.5 + 50 + delta,
+            clientY: 200 + delta,
+            radiusX: 10,
+            radiusY: 10
+        });
+        const touchStartEvent = new TouchEvent(str, {
+            touches: [touch1, touch2],
+            changedTouches: [touch1, touch2],
+            bubbles: true,
+            cancelable: true
+        });
+        maskCanvas.dispatchEvent(touchStartEvent);
+    }
+
+    // タッチ：押下
+    maskCanvas.addEventListener('touchstart', function (e) {
+        e.preventDefault();
+
+        isDragging = true;
+
+        if (e.touches.length === 1) {
+            tmp.preX = e.touches[0].clientX;
+            tmp.preY = e.touches[0].clientY;
+        } else if (e.touches.length == 2) {
+            tmp.preX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+            tmp.preY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+            tmp.preDistance = _getDistance(e.touches[0], e.touches[1]);
+            tmp.preAngle = _getAngle(e.touches[0], e.touches[1]);
+        }
+
+
+    });
+
+    // タッチ：移動
+    maskCanvas.addEventListener('touchmove', function (e) {
+        e.preventDefault();
+
+        if (!isDragging) return;
+
+        let E = 0, F = 0, A = 0, D = 0, RAD = 0;
+
+        if (e.touches.length === 1) {
+            E = e.touches[0].clientX - tmp.preX;
+            F = e.touches[0].clientY - tmp.preY;
+
+            touchDelta.e += E;
+            touchDelta.f += F;
+
+            tmp.preX = e.touches[0].clientX;
+            tmp.preY = e.touches[0].clientY;
+
+        } else if (e.touches.length == 2) {
+            const touchX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+            const touchY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+            const touchDistance = _getDistance(e.touches[0], e.touches[1]);
+            const touchAngle = _getAngle(e.touches[0], e.touches[1]);
+
+            E = touchX - tmp.preX;
+            F = touchY - tmp.preY;
+            A = (touchDistance - tmp.preDistance) / tmp.preDistance;
+            D = A;
+            RAD = touchAngle - tmp.preAngle;
+
+            tmp.preX = touchX;
+            tmp.preY = touchY;
+            tmp.preDistance = touchDistance;
+            tmp.preAngle = touchAngle;
+
+            const rect = maskCanvas.getBoundingClientRect();
+            const centerX = touchX - rect.left;
+            const centerY = touchY - rect.top;
+            const drawXY = _getInverseCoords(centerX, centerY, mainCtx.getTransform());
+
+            touchDelta.e += centerX - (touch.e + touchDelta.e);
+            touchDelta.f += centerY - (touch.f + touchDelta.f);
+            touchDelta.imgX -= drawXY.x;
+            touchDelta.imgY -= drawXY.y;
+
+            touchDelta.e += E;
+            touchDelta.f += F;
+            touchDelta.a += A;
+            touchDelta.d += D;
+            touchDelta.rad += RAD;
+
+        }
+
+        updateMainCanvas();
+    });
+
+    // タッチ：アップ
+    maskCanvas.addEventListener('touchend', function (e) {
+        e.preventDefault();
+        isDragging = false;
+    });
+
+    // タッチ：キャンセル
+    maskCanvas.addEventListener('touchcancel', function (e) {
+        e.preventDefault();
+        isDragging = false;
+    });
+
+</script>
+
+<script>
+    // マウス：押下
+    maskCanvas.addEventListener('mousedown', function (e) {
+        isDragging = true;
+        tmp.preX = e.clientX;
+        tmp.preY = e.clientY;
+    });
+
+    // マウス：移動
+    maskCanvas.addEventListener('mousemove', function (e) {
+        if (isDragging) {
+            let E = 0, F = 0;
+            E = e.clientX - tmp.preX;
+            F = e.clientY - tmp.preY;
+
+            touchDelta.e += E;
+            touchDelta.f += F;
+
+            updateMainCanvas();
+
+            tmp.preX = e.clientX;
+            tmp.preY = e.clientY;
+        }
+    });
+
+    // マウス：アップ
+    maskCanvas.addEventListener('mouseup', function () {
+        isDragging = false;
+    });
+
+    // マウス：離し
+    maskCanvas.addEventListener('mouseout', function () {
+        isDragging = false;
+    });
+
+    // マウス：スクロール
+    maskCanvas.addEventListener('wheel', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const rect = maskCanvas.getBoundingClientRect();
+        const centerX = e.clientX - rect.left;
+        const centerY = e.clientY - rect.top;
+        const drawXY = _getInverseCoords(centerX, centerY, mainCtx.getTransform());
+
+        touchDelta.e += centerX - (touch.e + touchDelta.e);
+        touchDelta.f += centerY - (touch.f + touchDelta.f);
+        touchDelta.imgX -= drawXY.x;
+        touchDelta.imgY -= drawXY.y;
+
+        let A = 0, D = 0;
+        if (e.deltaY < 0) {
+            A += 0.03;
+            D += 0.03;
+        } else if (e.deltaY > 0) {
+            A -= 0.03;
+            D -= 0.03;
+        }
+
+        let RAD = 0;
+        if (e.deltaX < 0) {
+            RAD = Math.PI / 180;
+        } else if (e.deltaX > 0) {
+            RAD = -Math.PI / 180;
+        }
+
+        touchDelta.a += A;
+        touchDelta.d += D;
+        touchDelta.rad += RAD;
+
+        updateMainCanvas();
+    });
+
+</script>
 
 <head>
     <meta charset="UTF-8">
@@ -155,7 +569,7 @@
         };
 
         img.onerror = function () {
-            alert('图片加载失败');
+            alert('画像読み込みエラー');
         };
 
         // スライドバー
@@ -175,422 +589,6 @@
         testButton.addEventListener('click', test_clicked);
 
     </script>
-
-    <script>
-        const touch = { a: 1, d: 1, e: 0, f: 0, rad: 0, imgX: 0, imgY: 0 };
-        const touchDelta = { a: 0, d: 0, e: 0, f: 0, rad: 0, imgX: 0, imgY: 0 };
-        const maskRect = { left: 0, top: 0, right: 0, bottom: 0, width: 0, height: 0, centerX: 0, centerY: 0 };
-        const maskRectDelta = { left: 0, top: 0, right: 0, bottom: 0, width: 0, height: 0, centerX: 0, centerY: 0 };
-        let isDragging = false, animateRate = 0, animationId;
-        const tmp = {};
-
-        function test_clicked() {
-            _test_clicked("touchstart", 3)
-
-            for (i = 2; i < 10; i++) {
-                _test_clicked("touchmove", i * 3)
-            }
-            _test_clicked("touchend", 10)
-        }
-
-
-        function confirm_clicked() {
-            if (animateRate > 0) return;
-
-            touch.a += touchDelta.a;
-            touch.d += touchDelta.d;
-            touch.e += touchDelta.e;
-            touch.f += touchDelta.f;
-            touch.rad += touchDelta.rad;
-            touch.imgX += touchDelta.imgX;
-            touch.imgY += touchDelta.imgY;
-
-            touchDelta.a = 0;
-            touchDelta.d = 0;
-            touchDelta.e = 0;
-            touchDelta.f = 0;
-            touchDelta.rad = 0;
-            touchDelta.imgX = 0;
-            touchDelta.imgY = 0;
-
-
-            setMaskRect(
-                maskRect.left + maskRectDelta.left,
-                maskRect.top + maskRectDelta.top,
-                maskRect.right + maskRectDelta.right,
-                maskRect.bottom + maskRectDelta.bottom
-            );
-
-            maskRectDelta.left = 0;
-            maskRectDelta.top = 0;
-            maskRectDelta.right = 0;
-            maskRectDelta.bottom = 0;
-            maskRectDelta.width = 0;
-            maskRectDelta.height = 0;
-            maskRectDelta.centerX = 0;
-            maskRectDelta.centerY = 0;
-
-            const maxRect = _getCanvasMaxRect(maskCanvas, maskRect);
-            const imgXY = _getInverseCoords(maskRect.centerX, maskRect.centerY, mainCtx.getTransform());
-            const scale = Math.min(maskCanvas.width / maskRect.width, maskCanvas.height / maskRect.height);
-
-            touchDelta.e = maxRect.centerX - touch.e;
-            touchDelta.f = maxRect.centerY - touch.f;
-            touchDelta.a = (touchDelta.a + touch.a) * scale - touch.a;
-            touchDelta.d = (touchDelta.d + touch.d) * scale - touch.d;
-            touchDelta.imgX = -imgXY.x;
-            touchDelta.imgY = -imgXY.y;
-
-            maskRectDelta.left = maxRect.left - maskRect.left;
-            maskRectDelta.top = maxRect.top - maskRect.top;
-            maskRectDelta.right = maxRect.right - maskRect.right;
-            maskRectDelta.bottom = maxRect.bottom - maskRect.bottom;
-            maskRectDelta.width = maxRect.width - maskRect.width;
-            maskRectDelta.height = maxRect.height - maskRect.height;
-            maskRectDelta.centerX = maxRect.centerX - maskRect.centerX;
-            maskRectDelta.centerY = maxRect.botcenterYtom - maskRect.centerY;
-
-            animate(updateMainCanvas, updateMaskCanvas);
-        }
-
-        function animate(main, mask) {
-            animateRate += 1;
-            rate = 1 / (1 + Math.exp(-(animateRate - 9)));
-            if (rate > 0.99) {
-                animateRate = 0;
-                cancelAnimationFrame(animationId);
-                animationId = null;
-                main();
-                mask();
-            } else {
-                main(rate);
-                mask(rate);
-                animationId = requestAnimationFrame(() => { animate(main, mask) });
-            }
-        }
-
-        function updateMainCanvas(rate = 1) {
-            // 画像：クリア
-            mainCtx.save();
-            mainCtx.setTransform(1, 0, 0, 1, 0, 0);
-            mainCtx.clearRect(0, 0, mainCanvas.width, mainCanvas.height);
-            mainCtx.fillRect(0, 0, mainCanvas.width, mainCanvas.height);
-            mainCtx.restore();
-            // 画像：マトリックス設定
-            const transform = mainCtx.getTransform();
-            a = touch.a + touchDelta.a * rate;
-            d = touch.d + touchDelta.d * rate;
-            e = touch.e + touchDelta.e * rate;
-            f = touch.f + touchDelta.f * rate;
-            rad = touch.rad + touchDelta.rad;
-            mainCtx.setTransform(
-                Math.cos(rad) * a,  //a
-                Math.sin(rad) * a,  //b
-                -Math.sin(rad) * d, //c
-                Math.cos(rad) * d,  //d
-                e,                  //e
-                f                   //f
-            );
-            // 画像：描画
-            mainCtx.drawImage(img, touch.imgX + touchDelta.imgX * rate, touch.imgY + touchDelta.imgY * rate);
-        }
-
-        function updateMaskCanvas(rate = 1) {
-            // マスク描画：クリア
-            maskCtx.clearRect(0, 0, maskCanvas.width, maskCanvas.height);
-            // マスク描画：無効領域
-            maskCtx.fillRect(0, 0, maskCanvas.width, maskCanvas.height);
-            // マスク描画：有効領域
-            maskCtx.clearRect(
-                maskRect.left + maskRectDelta.left * rate,
-                maskRect.top + maskRectDelta.top * rate,
-                maskRect.width + maskRectDelta.width * rate,
-                maskRect.height + maskRectDelta.height * rate
-            );
-        }
-
-        function setMaskRect(left, top, right, bottom) {
-            left = parseFloat(left);
-            top = parseFloat(top);
-            right = parseFloat(right);
-            bottom = parseFloat(bottom);
-
-            if ((right - left) < 60) {
-                right = left + 60;
-            }
-            if ((bottom - top) < 60) {
-                bottom = top + 60;
-            }
-
-            // 更新显示值
-            leftValue.textContent = parseInt(left);
-            topValue.textContent = parseInt(top);
-            rightValue.textContent = parseInt(right);
-            bottomValue.textContent = parseInt(bottom);
-            // 更新值
-            leftSlider.value = left;
-            topSlider.value = top;
-            rightSlider.value = right;
-            bottomSlider.value = bottom;
-
-            maskRect.left = left;
-            maskRect.top = top;
-            maskRect.right = right;
-            maskRect.bottom = bottom;
-            maskRect.width = right - left;
-            maskRect.height = bottom - top;
-            maskRect.centerX = (left + right) / 2;
-            maskRect.centerY = (top + bottom) / 2;
-        }
-
-        function _getCanvasMaxRect(canvas, rect) {
-            const scale = Math.min(canvas.width / rect.width, canvas.height / rect.height);
-            const maxCenterX = canvas.width / 2;
-            const maxCenterY = canvas.height / 2;
-            const maxRect = {};
-            maxRect.left = maxCenterX - rect.width * scale / 2;
-            maxRect.top = maxCenterY - rect.height * scale / 2;
-            maxRect.right = maxCenterX + rect.width * scale / 2;
-            maxRect.bottom = maxCenterY + rect.height * scale / 2;
-            maxRect.width = maxRect.right - maxRect.left;
-            maxRect.height = maxRect.bottom - maxRect.top;
-            maxRect.centerX = maxCenterX;
-            maxRect.centerY = maxCenterY;
-            return maxRect;
-        }
-
-        function _getInverseCoords(x, y, m) {
-            const det = m.a * m.d - m.b * m.c;
-
-            if (Math.abs(det) < 1e-10) return null;
-
-            const invDet = 1 / det;
-            const invA = m.d * invDet;
-            const invB = -m.b * invDet;
-            const invC = -m.c * invDet;
-            const invD = m.a * invDet;
-            const invE = -(m.e * invA + m.f * invC);
-            const invF = -(m.e * invB + m.f * invD);
-
-            inverse = {
-                a: invA, b: invB,
-                c: invC, d: invD,
-                e: invE, f: invF
-            };
-
-            return {
-                x: inverse.a * x + inverse.c * y + inverse.e,
-                y: inverse.b * x + inverse.d * y + inverse.f
-            };
-
-        }
-
-        function _getDistance(touch1, touch2) {
-            const dx = touch2.clientX - touch1.clientX;
-            const dy = touch2.clientY - touch1.clientY;
-            return Math.sqrt(dx * dx + dy * dy);
-        }
-
-        function _getAngle(touch1, touch2) {
-            const dx = touch2.clientX - touch1.clientX;
-            const dy = touch2.clientY - touch1.clientY;
-            return Math.atan2(dy, dx);
-        }
-
-    </script>
-
-    <script>
-        function _test_clicked(str, delta) {
-            const touch1 = new Touch({
-                identifier: 0,
-                target: maskCanvas,
-                clientX: 173.5 - 50 - delta,
-                clientY: 200 - delta,
-                radiusX: 10,
-                radiusY: 10
-            });
-
-            const touch2 = new Touch({
-                identifier: 1,
-                target: maskCanvas,
-                clientX: 173.5 + 50 + delta,
-                clientY: 200 + delta,
-                radiusX: 10,
-                radiusY: 10
-            });
-            const touchStartEvent = new TouchEvent(str, {
-                touches: [touch1, touch2],
-                changedTouches: [touch1, touch2],
-                bubbles: true,
-                cancelable: true
-            });
-            maskCanvas.dispatchEvent(touchStartEvent);
-        }
-
-        // タッチ：押下
-        maskCanvas.addEventListener('touchstart', function (e) {
-            e.preventDefault();
-
-            isDragging = true;
-
-            if (e.touches.length === 1) {
-                tmp.preX = e.touches[0].clientX;
-                tmp.preY = e.touches[0].clientY;
-            } else if (e.touches.length == 2) {
-                tmp.preX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
-                tmp.preY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
-                tmp.preDistance = _getDistance(e.touches[0], e.touches[1]);
-                tmp.preAngle = _getAngle(e.touches[0], e.touches[1]);
-            }
-
-
-        });
-
-        // タッチ：移動
-        maskCanvas.addEventListener('touchmove', function (e) {
-            e.preventDefault();
-
-            if (!isDragging) return;
-
-            let E = 0, F = 0, A = 0, D = 0, RAD = 0;
-
-            if (e.touches.length === 1) {
-                E = e.touches[0].clientX - tmp.preX;
-                F = e.touches[0].clientY - tmp.preY;
-
-                touchDelta.e += E;
-                touchDelta.f += F;
-
-                tmp.preX = e.touches[0].clientX;
-                tmp.preY = e.touches[0].clientY;
-
-            } else if (e.touches.length == 2) {
-                const touchX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
-                const touchY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
-                const touchDistance = _getDistance(e.touches[0], e.touches[1]);
-                const touchAngle = _getAngle(e.touches[0], e.touches[1]);
-
-                E = touchX - tmp.preX;
-                F = touchY - tmp.preY;
-                A = (touchDistance - tmp.preDistance) / tmp.preDistance;
-                D = A;
-                RAD = touchAngle - tmp.preAngle;
-
-                tmp.preX = touchX;
-                tmp.preY = touchY;
-                tmp.preDistance = touchDistance;
-                tmp.preAngle = touchAngle;
-
-                const rect = maskCanvas.getBoundingClientRect();
-                const centerX = touchX - rect.left;
-                const centerY = touchY - rect.top;
-                const drawXY = _getInverseCoords(centerX, centerY, mainCtx.getTransform());
-
-                touchDelta.e += centerX - (touch.e + touchDelta.e);
-                touchDelta.f += centerY - (touch.f + touchDelta.f);
-                touchDelta.imgX -= drawXY.x;
-                touchDelta.imgY -= drawXY.y;
-
-                touchDelta.e += E;
-                touchDelta.f += F;
-                touchDelta.a += A;
-                touchDelta.d += D;
-                touchDelta.rad += RAD;
-
-            }
-
-            updateMainCanvas();
-        });
-
-        // タッチ：アップ
-        maskCanvas.addEventListener('touchend', function (e) {
-            e.preventDefault();
-            isDragging = false;
-        });
-
-        // タッチ：キャンセル
-        maskCanvas.addEventListener('touchcancel', function (e) {
-            e.preventDefault();
-            isDragging = false;
-        });
-
-    </script>
-
-    <script>
-        // マウス：押下
-        maskCanvas.addEventListener('mousedown', function (e) {
-            isDragging = true;
-            tmp.preX = e.clientX;
-            tmp.preY = e.clientY;
-        });
-
-        // マウス：移動
-        maskCanvas.addEventListener('mousemove', function (e) {
-            if (isDragging) {
-                let E = 0, F = 0;
-                E = e.clientX - tmp.preX;
-                F = e.clientY - tmp.preY;
-
-                touchDelta.e += E;
-                touchDelta.f += F;
-
-                updateMainCanvas();
-
-                tmp.preX = e.clientX;
-                tmp.preY = e.clientY;
-            }
-        });
-
-        // マウス：アップ
-        maskCanvas.addEventListener('mouseup', function () {
-            isDragging = false;
-        });
-
-        // マウス：離し
-        maskCanvas.addEventListener('mouseout', function () {
-            isDragging = false;
-        });
-
-        // マウス：スクロール
-        maskCanvas.addEventListener('wheel', function (e) {
-            e.preventDefault();
-            e.stopPropagation();
-
-            const rect = maskCanvas.getBoundingClientRect();
-            const centerX = e.clientX - rect.left;
-            const centerY = e.clientY - rect.top;
-            const drawXY = _getInverseCoords(centerX, centerY, mainCtx.getTransform());
-
-            touchDelta.e += centerX - (touch.e + touchDelta.e);
-            touchDelta.f += centerY - (touch.f + touchDelta.f);
-            touchDelta.imgX -= drawXY.x;
-            touchDelta.imgY -= drawXY.y;
-
-            let A = 0, D = 0;
-            if (e.deltaY < 0) {
-                A += 0.03;
-                D += 0.03;
-            } else if (e.deltaY > 0) {
-                A -= 0.03;
-                D -= 0.03;
-            }
-
-            let RAD = 0;
-            if (e.deltaX < 0) {
-                RAD = Math.PI / 180;
-            } else if (e.deltaX > 0) {
-                RAD = -Math.PI / 180;
-            }
-
-            touchDelta.a += A;
-            touchDelta.d += D;
-            touchDelta.rad += RAD;
-
-            updateMainCanvas();
-        });
-
-    </script>
-
 </body>
 
 </html>
