@@ -129,9 +129,7 @@
         maskCanvas.width = width * dpr;
         maskCanvas.height = height * dpr;
         maskCtx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-        const img = new Image();
-        img.crossOrigin = "Anonymous";
-        img.src = 'https://img-s-msn-com.akamaized.net/tenant/amp/entityid/AA1FkVgF.img';
+
     </script>
 
     <script>
@@ -590,6 +588,10 @@
         // ボタン：確定
         maximizeButton.addEventListener('click', confirm_clicked);
         testButton.addEventListener('click', test_clicked);
+        
+        const img = new Image();
+        img.crossOrigin = "Anonymous";
+        img.src = 'https://img-s-msn-com.akamaized.net/tenant/amp/entityid/AA1FkVgF.img';
 
     </script>
 </body>
