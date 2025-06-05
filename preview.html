@@ -4,47 +4,46 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Two Canvas with Mask, Sliders, and Maximize Button</title>
+    <title>Preview</title>
     <style>
         body {
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
-            height: 100vh;
-            margin: 0;
+            gap: 9px;
+            margin: 3px;
+            height: 90vh;
             background: #f0f0f0;
             font-family: Arial, sans-serif;
         }
 
         .canvas-container {
             position: relative;
+            margin: 10px;
             width: 95%;
             height: 400px;
         }
 
-        canvas {
+        .canvas-container canvas {
             position: absolute;
-            top: 0%;
-            left: 0%;
+            top: 0;
+            left: 0;
             width: 100%;
             height: 100%;
-            border: 1px solid #000;
         }
 
-        #mainCanvas {
-            z-index: 1;
-        }
-
-        #maskCanvas {
-            z-index: 2;
+        .canvas-slid {
+            position: relative;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 150px;
         }
 
         .controls {
-            margin-top: 20px;
             display: flex;
             flex-direction: row;
-            gap: 10px;
+            gap: 60px;
         }
 
         label {
@@ -52,8 +51,7 @@
         }
 
         button {
-            margin-top: 10px;
-            padding: 10px 20px;
+            padding: 10px;
             font-size: 16px;
             cursor: pointer;
             background-color: #007bff;
@@ -61,44 +59,44 @@
             border: none;
             border-radius: 5px;
         }
-
-        button:hover {
-            background-color: #0056b3;
-        }
     </style>
 </head>
 
 <body>
     <div class="canvas-container">
-        <canvas id="mainCanvas"></canvas>
-        <canvas id="maskCanvas"></canvas>
+        <canvas id="mainCanvas" style="z-index: 1;"></canvas>
+        <canvas id="maskCanvas" style="z-index: 2;"></canvas>
     </div>
+    <canvas id="slidCanvas" class="canvas-slid"></canvas>
     <div class="controls">
         <button id="resetButton">復元</button>
-        <button id="confirmButton">確定</button>
+        <button id="confiButton">確定</button>
     </div>
+
     <script>
-        const mainCanvas = document.getElementById('mainCanvas');
-        const maskCanvas = document.getElementById('maskCanvas');
-        const mainCtx = mainCanvas.getContext('2d');
-        const maskCtx = maskCanvas.getContext('2d');
-        const confirmButton = document.getElementById('confirmButton');
-        const resetButton = document.getElementById('resetButton');
+        let touch, touchDelta, maskRect, maskRectDelta, slidCenterTouch;
+        let isDragging = false, animateRate = 0, controlHandlerIndex = 0, animationId = null, tmp = {};
 
         const container = document.querySelector('.canvas-container');
-        const width = container.clientWidth;
-        const height = container.clientHeight;
-        const tmp = {};
+        const confiButton = document.getElementById('confiButton');
+        const resetButton = document.getElementById('resetButton');
 
-        let touch, touchDelta, maskRect, maskRectDelta;
-        let isDragging = false, animateRate = 0, maskCornerIndex = 0, animationId = null;
+        const mainCanvas = document.getElementById('mainCanvas');
+        const maskCanvas = document.getElementById('maskCanvas');
+        const slidCanvas = document.getElementById('slidCanvas');
 
-        mainCanvas.width = width;
-        mainCanvas.height = height;
+        mainCanvas.width = container.clientWidth;
+        mainCanvas.height = container.clientHeight;
+        maskCanvas.width = container.clientWidth;
+        maskCanvas.height = container.clientHeight;
+        slidCanvas.width = container.clientWidth;
+        slidCanvas.height = slidCanvas.clientHeight;
+
+        const mainCtx = mainCanvas.getContext('2d');
+        const maskCtx = maskCanvas.getContext('2d');
+        const slidCtx = slidCanvas.getContext('2d');
+
         mainCtx.fillStyle = 'white';
-
-        maskCanvas.width = width;
-        maskCanvas.height = height;
         maskCtx.fillStyle = 'rgba(0, 0, 0, 0.6)';
 
     </script>
@@ -107,9 +105,21 @@
         function reset_clicked() {
             img.onload();
         }
-        function confirm_clicked() {
 
+        function confirm_clicked() {
+            const trimCanvas = document.createElement('canvas');
+            trimCanvas.width = maskRect.width;
+            trimCanvas.height = maskRect.height;
+
+            const trimCCtx = trimCanvas.getContext('2d');
+            trimCCtx.drawImage(mainCanvas, -maskRect.left, -maskRect.top)
+
+            const link = document.createElement('a');
+            link.download = 'cropped_image.png';
+            link.href = trimCanvas.toDataURL('image/png');
+            link.click();
         }
+
         function autoResizeRect() {
             if (animateRate > 0) return;
 
@@ -226,8 +236,8 @@
             maskCtx.clearRect(left, top, width, height);
 
             // 水平線
-            maskCtx.setLineDash([5, 5]);
-            maskCtx.lineWidth = 2;
+            maskCtx.setLineDash([1, 1]);
+            maskCtx.lineWidth = 1;
             maskCtx.strokeStyle = '#999';
 
             maskCtx.beginPath();
@@ -246,6 +256,8 @@
             maskCtx.stroke();
 
             // 枠
+            maskCtx.setLineDash([]);
+            maskCtx.lineWidth = 2;
             maskCtx.strokeStyle = '#000';
 
             maskCtx.beginPath();
@@ -258,7 +270,6 @@
             // 四角
             const cornerLength = 30;
             const cornerOffset = 0;
-            maskCtx.setLineDash([]);
             maskCtx.lineWidth = 5;
 
             left += cornerOffset;
@@ -288,6 +299,15 @@
 
         }
 
+        function updateSlidCanvas() {
+            slidCtx.save();
+            slidCtx.clearRect(0, 0, slidCanvas.width, slidCanvas.height);
+            slidCtx.translate(slidCenterTouch.clientX, slidCenterTouch.clientY);
+            slidCtx.rotate(touch.rad + touchDelta.rad);
+            slidCtx.drawImage(ofstCanvas, -ofstCanvas.width / 2, -ofstCanvas.height / 2);
+            slidCtx.restore();
+        }
+
         function setMaskRect(left, top, right, bottom) {
             if ((right - left) < 60) {
                 right = left + 60;
@@ -306,8 +326,12 @@
             maskRect.centerY = (top + bottom) / 2;
         }
 
-        function checkIsInMaskCorner(screenX, screenY) {
-            const touchRadius = 15;
+        function isEdgeInside(screenX, screenY) {
+
+        }
+
+        function getControlHandlerIndex(screenX, screenY) {
+            const touchRadius = 30;
             const rect = maskCanvas.getBoundingClientRect();
             const x = screenX - rect.left;
             const y = screenY - rect.top;
@@ -326,6 +350,66 @@
                 }
             }
             return 0;
+        }
+
+        function _drawOfstCanvas(offsetscreenCanvas, imgWidth) {
+            let sin = 0, arcsin = 0;
+
+            switch (0) {
+                case 0:
+                    sin = (3 ** 0.5) / 2; //60" PI/3
+                    arcsin = Math.PI / 3;
+                    break;
+                case 1:
+                    sin = 1 / (2 ** 0.5); //45" PI/4
+                    arcsin = Math.PI / 4;
+                    break;
+                case 2:
+                    sin = 1 / 2; //30" PI/6
+                    arcsin = Math.PI / 6;
+                    break;
+                case 3:
+                    sin = 0; //0"
+                    arcsin = 0;
+                    break;
+            }
+
+            const sec = 1 / ((1 - sin ** 2) ** 0.5);
+            const arcX = imgWidth / 2;
+            const arcR = arcX * sec;
+            const arcY = -arcR * sin;
+
+            offsetscreenCanvas.width = arcR * 2 + 15;
+            offsetscreenCanvas.height = arcR * 2 + 35;
+
+            const offscreenCtx = offsetscreenCanvas.getContext('2d');
+            offscreenCtx.strokeStyle = 'rgba(0, 0, 0, 1)';
+            offscreenCtx.font = '14px Arial';
+
+            offscreenCtx.translate(offsetscreenCanvas.width / 2, offsetscreenCanvas.height / 2);
+            offscreenCtx.beginPath();
+            offscreenCtx.arc(0, 0, arcR, 0, 2 * Math.PI);
+            offscreenCtx.stroke();
+
+            const maxAngle = 20;
+            const linePadding = arcR * 0.01;
+            const lineEnd = arcR - arcR * 0.05;
+            const angle = (Math.PI - arcsin * 2) / maxAngle;
+
+            offscreenCtx.fillStyle = 'rgba(0, 0, 0, 1)';
+            offscreenCtx.rotate(-Math.PI / 2);
+            offscreenCtx.rotate(arcsin);
+            offscreenCtx.beginPath();
+            for (let index = 0; index <= maxAngle; index++) {
+                const delta = index % 5 == 0 ? 0 : linePadding;
+                offscreenCtx.moveTo(0, arcR - delta);
+                offscreenCtx.lineTo(0, lineEnd + delta);
+                offscreenCtx.fillText((index - 10) + '°', -7, arcR + 17);
+                offscreenCtx.rotate(angle);
+            }
+            offscreenCtx.stroke();
+
+            return { clientX: arcX, clientY: arcY };
         }
 
         function _getCanvasMaxRect(canvas, rect) {
@@ -395,7 +479,7 @@
             if (e.touches.length === 1) {
                 tmp.preX = e.touches[0].clientX;
                 tmp.preY = e.touches[0].clientY;
-                maskCornerIndex = checkIsInMaskCorner(tmp.preX, tmp.preY);
+                controlHandlerIndex = getControlHandlerIndex(tmp.preX, tmp.preY);
             } else if (e.touches.length == 2) {
                 tmp.preX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
                 tmp.preY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
@@ -418,8 +502,11 @@
                 E = e.touches[0].clientX - tmp.preX;
                 F = e.touches[0].clientY - tmp.preY;
 
-                if (maskCornerIndex > 0) {
-                    switch (maskCornerIndex) {
+                tmp.preX = e.touches[0].clientX;
+                tmp.preY = e.touches[0].clientY;
+
+                if (controlHandlerIndex > 0) {
+                    switch (controlHandlerIndex) {
                         case 1:
                             setMaskRect(maskRect.left + E, maskRect.top + F, maskRect.right, maskRect.bottom)
                             break;
@@ -434,14 +521,11 @@
                             break;
                     }
                     updateMaskCanvas();
-
+                    return;
                 } else {
                     touchDelta.e += E;
                     touchDelta.f += F;
                 }
-
-                tmp.preX = e.touches[0].clientX;
-                tmp.preY = e.touches[0].clientY;
 
             } else if (e.touches.length == 2) {
                 const touchX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
@@ -485,7 +569,7 @@
         maskCanvas.addEventListener('touchend', function (e) {
             e.preventDefault();
             isDragging = false;
-            maskCornerIndex = 0;
+            controlHandlerIndex = 0;
             autoResizeRect();
         });
 
@@ -493,89 +577,57 @@
         maskCanvas.addEventListener('touchcancel', function (e) {
             e.preventDefault();
             isDragging = false;
-            maskCornerIndex = 0;
+            controlHandlerIndex = 0;
             autoResizeRect();
         });
 
     </script>
 
     <script>
-        // マウス：押下
-        maskCanvas.addEventListener('mousedown', function (e) {
-            isDragging = true;
-            tmp.preX = e.clientX;
-            tmp.preY = e.clientY;
-        });
 
-        // マウス：移動
-        maskCanvas.addEventListener('mousemove', function (e) {
-            if (isDragging) {
-                let E = 0, F = 0;
-                E = e.clientX - tmp.preX;
-                F = e.clientY - tmp.preY;
-
-                touchDelta.e += E;
-                touchDelta.f += F;
-
-                updateMainCanvas();
-
-                tmp.preX = e.clientX;
-                tmp.preY = e.clientY;
-            }
-        });
-
-        // マウス：アップ
-        maskCanvas.addEventListener('mouseup', function () {
-            isDragging = false;
-        });
-
-        // マウス：離し
-        maskCanvas.addEventListener('mouseout', function () {
-            isDragging = false;
-        });
-
-        // マウス：スクロール
-        maskCanvas.addEventListener('wheel', function (e) {
+        // タッチ：押下
+        slidCanvas.addEventListener('touchstart', function (e) {
             e.preventDefault();
-            e.stopPropagation();
 
-            const rect = maskCanvas.getBoundingClientRect();
-            const centerX = e.clientX - rect.left;
-            const centerY = e.clientY - rect.top;
-            const drawXY = _getInverseCoords(centerX, centerY, mainCtx.getTransform());
+            isDragging = true;
+            tmp.preAngle = _getAngle(e.touches[0], slidCenterTouch);
+        });
 
-            touchDelta.e += centerX - (touch.e + touchDelta.e);
-            touchDelta.f += centerY - (touch.f + touchDelta.f);
-            touchDelta.imgX -= drawXY.x;
-            touchDelta.imgY -= drawXY.y;
+        // タッチ：移動
+        slidCanvas.addEventListener('touchmove', function (e) {
+            e.preventDefault();
 
-            let A = 0, D = 0;
-            if (e.deltaY < 0) {
-                A += 0.03;
-                D += 0.03;
-            } else if (e.deltaY > 0) {
-                A -= 0.03;
-                D -= 0.03;
-            }
+            if (!isDragging) return;
+            const touchAngle = _getAngle(e.touches[0], slidCenterTouch);
 
-            let RAD = 0;
-            if (e.deltaX < 0) {
-                RAD = Math.PI / 180;
-            } else if (e.deltaX > 0) {
-                RAD = -Math.PI / 180;
-            }
+            let RAD = touchAngle - tmp.preAngle;
+            tmp.preAngle = touchAngle;
 
-            touchDelta.a += A;
-            touchDelta.d += D;
             touchDelta.rad += RAD;
 
             updateMainCanvas();
+            updateSlidCanvas();
+        });
+
+        // タッチ：アップ
+        slidCanvas.addEventListener('touchend', function (e) {
+            e.preventDefault();
+            isDragging = false;
+            autoResizeRect();
+        });
+
+        // タッチ：キャンセル
+        slidCanvas.addEventListener('touchcancel', function (e) {
+            e.preventDefault();
+            isDragging = false;
         });
 
     </script>
 
     <script>
+        const ofstCanvas = document.createElement('canvas');
         const img = new Image();
+
         img.crossOrigin = "Anonymous";
         img.src = 'https://tyoukou.github.io/test/1.jpg';
         img.onload = function () {
@@ -583,6 +635,8 @@
             touchDelta = { a: 0, d: 0, e: 0, f: 0, rad: 0, imgX: 0, imgY: 0 };
             maskRect = { left: 0, top: 0, right: 0, bottom: 0, width: 0, height: 0, centerX: 0, centerY: 0 };
             maskRectDelta = { left: 0, top: 0, right: 0, bottom: 0, width: 0, height: 0, centerX: 0, centerY: 0 };
+            slidCenterTouch = _drawOfstCanvas(ofstCanvas, container.clientWidth);
+
             const scale = Math.max(mainCanvas.width / img.width, mainCanvas.height / img.height);
             touch.imgX = -img.width / 2;
             touch.imgY = -img.height / 2;
@@ -590,7 +644,9 @@
             touch.f = mainCanvas.height / 2;
             touch.a = scale;
             touch.d = scale;
+
             updateMainCanvas();
+            updateSlidCanvas();
 
             const width = Math.min(img.width * scale, mainCanvas.width);
             const height = Math.min(img.height * scale, mainCanvas.height);
@@ -607,7 +663,7 @@
             alert('画像読み込みエラー');
         };
 
-        confirmButton.addEventListener('click', confirm_clicked);
+        confiButton.addEventListener('click', confirm_clicked);
         resetButton.addEventListener('click', reset_clicked);
 
     </script>
