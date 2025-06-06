@@ -4,80 +4,116 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Preview</title>
+    <title>プレビュー表示</title>
     <style>
         body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            height: 100vh;
             display: flex;
             flex-direction: column;
-            align-items: center;
-            gap: 9px;
-            margin: 3px;
-            height: 90vh;
-            background: #f0f0f0;
-            font-family: Arial, sans-serif;
+            background-color: #333;
+            font-size: 14px;
         }
 
-        .canvas-container {
-            position: relative;
-            margin: 10px;
-            width: 95%;
-            height: 400px;
-        }
-
-        .canvas-container canvas {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-        }
-
-        .canvas-slid {
-            position: relative;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 150px;
-        }
-
-        .controls {
+        .header {
+            height: 60px;
             display: flex;
-            flex-direction: row;
-            gap: 60px;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            background-color: black;
         }
 
-        label {
-            margin-right: 10px;
+        .content {
+            flex: 1;
+            position: relative;
+            top: 0;
+            left: 0;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            /* background-color: yellow; */
         }
 
-        button {
-            padding: 10px;
-            font-size: 16px;
-            cursor: pointer;
-            background-color: #007bff;
-            color: white;
+        .content-image {
+            position: absolute;
+            height: 100%;
+            width: 100%;
+            /* background-color: blue; */
+        }
+
+        .content-mask {
+            position: absolute;
+            height: 100%;
+            width: 100%;
+            /* background-color: yellow; */
+        }
+
+        .content-slider {
+            position: absolute;
+            top: 430px;
+            height: 100px;
+            width: 100%;
+            /* background-color: red; */
+        }
+
+        .content-btn {
+            position: absolute;
+            top: 100px;
+            height: 30px;
+            color: #fff;
+            background-color: transparent;
             border: none;
-            border-radius: 5px;
+            text-align: left;
+            /* background-color: green; */
+        }
+
+        .footer {
+            height: 120px;
+            display: flex;
+            align-items: start;
+            justify-content: space-between;
+            background-color: black;
+        }
+
+        .footer button {
+            margin: 13px;
+            padding: 13px 29px;
+            border: none;
+            border-radius: 23px;
+        }
+
+        .btn-cancel {
+            background-color: transparent;
+            color: #fff;
+        }
+
+        .btn-save {
+            background-color: #007bff;
+            color: #fff;
         }
     </style>
 </head>
 
 <body>
-    <div class="canvas-container">
-        <canvas id="mainCanvas" style="z-index: 1;"></canvas>
-        <canvas id="maskCanvas" style="z-index: 2;"></canvas>
+    <div class="header">プレビュー 調整</div>
+    <div class="content">
+        <canvas id="mainCanvas" class="content-image"></canvas>
+        <canvas id="maskCanvas" class="content-mask"></canvas>
+        <canvas id="slidCanvas" class="content-slider"></canvas>
+        <button id="resetButton" class="content-btn">デフォルト設定に戻す</button>
     </div>
-    <canvas id="slidCanvas" class="canvas-slid"></canvas>
-    <div class="controls">
-        <button id="resetButton">復元</button>
-        <button id="confiButton">確定</button>
+    <div class="footer">
+        <button class="btn-cancel">キャンセル</button>
+        <button id="confiButton" class="btn-save">設定を保存</button>
     </div>
 
     <script>
-        let mainRect, mainRectDelta, maskRect, maskRectDelta, slidCenterTouch;
+        let mainRect, mainRectDelta, maskRect, maskRectDelta, slidCenterTouch, maskMaxRect, imgRect;
         let isDragging = false, animateRate = 0, controlHandlerIndex = 0, animationId = null, tmp = {};
 
-        const container = document.querySelector('.canvas-container');
+        const content = document.querySelector('.content');
         const confiButton = document.getElementById('confiButton');
         const resetButton = document.getElementById('resetButton');
 
@@ -85,19 +121,21 @@
         const maskCanvas = document.getElementById('maskCanvas');
         const slidCanvas = document.getElementById('slidCanvas');
 
-        mainCanvas.width = container.clientWidth;
-        mainCanvas.height = container.clientHeight;
-        maskCanvas.width = container.clientWidth;
-        maskCanvas.height = container.clientHeight;
-        slidCanvas.width = container.clientWidth;
-        slidCanvas.height = slidCanvas.clientHeight;
+        mainCanvas.width = content.clientWidth;
+        mainCanvas.height = content.clientHeight;
+        maskCanvas.width = content.clientWidth;
+        maskCanvas.height = content.clientHeight;
+        slidCanvas.width = content.clientWidth;
+        slidCanvas.height = 100;
 
         const mainCtx = mainCanvas.getContext('2d');
         const maskCtx = maskCanvas.getContext('2d');
         const slidCtx = slidCanvas.getContext('2d');
 
-        mainCtx.fillStyle = 'white';
-        maskCtx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+        mainCtx.fillStyle = '#333';
+        maskCtx.strokeStyle = 'white';
+
+        let maskDumyRect = { left: 9, top: 130, width: content.clientWidth - 18, height: 300 }
 
     </script>
 
@@ -144,88 +182,101 @@
             mainRect.e += mainRectDelta.e;
             mainRect.f += mainRectDelta.f;
             mainRect.rad += mainRectDelta.rad;
-            mainRect.imgX += mainRectDelta.imgX;
-            mainRect.imgY += mainRectDelta.imgY;
+            mainRect.left += mainRectDelta.left;
+            mainRect.top += mainRectDelta.top;
 
             mainRectDelta.a = 0;
             mainRectDelta.d = 0;
             mainRectDelta.e = 0;
             mainRectDelta.f = 0;
             mainRectDelta.rad = 0;
-            mainRectDelta.imgX = 0;
-            mainRectDelta.imgY = 0;
+            mainRectDelta.left = 0;
+            mainRectDelta.top = 0;
         }
 
-        function calculateMaskRectDelta() {
-            const maxRect = _getCanvasMaxRect(maskCanvas, maskRect);
-            const imgXY = _getCoords(_getInverse(mainCtx.getTransform()), maskRect.centerX, maskRect.centerY);
-            const scale = Math.min(maskCanvas.width / maskRect.width, maskCanvas.height / maskRect.height);
+        function calculateMainRect() {
+            const left = mainRect.left;
+            const top = mainRect.top;
+            const right = mainRect.left + mainRect.width;
+            const bottom = mainRect.top + mainRect.height;
 
-            mainRectDelta.e = maxRect.centerX - mainRect.e;
-            mainRectDelta.f = maxRect.centerY - mainRect.f;
-            mainRectDelta.a = (mainRectDelta.a + mainRect.a) * scale - mainRect.a;
-            mainRectDelta.d = (mainRectDelta.d + mainRect.d) * scale - mainRect.d;
-            mainRectDelta.imgX = -imgXY.x;
-            mainRectDelta.imgY = -imgXY.y;
-
-            maskRectDelta.left = maxRect.left - maskRect.left;
-            maskRectDelta.top = maxRect.top - maskRect.top;
-            maskRectDelta.right = maxRect.right - maskRect.right;
-            maskRectDelta.bottom = maxRect.bottom - maskRect.bottom;
-            maskRectDelta.width = maxRect.width - maskRect.width;
-            maskRectDelta.height = maxRect.height - maskRect.height;
-            maskRectDelta.centerX = maxRect.centerX - maskRect.centerX;
-            maskRectDelta.centerY = maxRect.centerY - maskRect.centerY;
-        }
-
-        function calculateMainRectDelta() {
             const transform = mainCtx.getTransform();
+            const imgP1 = _getCoords(transform, left, top);
+            const imgP2 = _getCoords(transform, right, top);
+            const imgP3 = _getCoords(transform, right, bottom);
+            const imgP4 = _getCoords(transform, left, bottom);
 
-            const left = mainRect.imgX;
-            const top = mainRect.imgY;
-            const right = mainRect.imgX + img.width;
-            const bottom = mainRect.imgY + img.height;
+            imgRect.left = Math.max(imgP1.x, imgP4.x);
+            imgRect.right = Math.min(imgP2.x, imgP3.x);
+            imgRect.top = Math.max(imgP1.y, imgP2.y);
+            imgRect.bottom = Math.min(imgP3.y, imgP4.y);
+            imgRect.centerX = (imgRect.left + imgRect.right) / 2;
+            imgRect.centerY = (imgRect.top + imgRect.bottom) / 2;
+            imgRect.width = imgRect.right - imgRect.left;
+            imgRect.height = imgRect.bottom - imgRect.top;
 
-            const sp1 = _getCoords(transform, left, top);
-            const sp2 = _getCoords(transform, right, top);
-            const sp3 = _getCoords(transform, right, bottom);
-            const sp4 = _getCoords(transform, left, bottom);
 
-            maskRect.left = Math.max(sp1.x, sp4.x);
-            maskRect.right = Math.min(sp2.x, sp3.x);
-            maskRect.top = Math.max(sp1.y, sp2.y);
-            maskRect.bottom = Math.min(sp3.y, sp4.y);
-            maskRect.centerX = (maskRect.left + maskRect.right) / 2;
-            maskRect.centerY = (maskRect.top + maskRect.bottom) / 2;
-            maskRect.width = maskRect.right - maskRect.left;
-            maskRect.height = maskRect.bottom - maskRect.top;
+            if (imgRect.width < maskRect.width || imgRect.height < maskRect.height) {
+                //画像はマスクより小さい場合：移動＋拡大
+                mainRectDelta.e = maskRect.centerX - mainRect.e;
+                mainRectDelta.f = maskRect.centerY - mainRect.f;
 
-            const maxRect = _getCanvasMaxRect(maskCanvas, maskRect);
-            const imgXY = _getCoords(_getInverse(mainCtx.getTransform()), maskRect.centerX, maskRect.centerY);
-            const scale = maxRect.width / maskRect.width;
+                const scale = Math.max(maskRect.height / imgRect.height, maskRect.width / imgRect.width);
+                mainRectDelta.a = mainRect.a * scale - mainRect.a;
+                mainRectDelta.d = mainRect.d * scale - mainRect.d;
 
-            maskRectDelta.left = maxRect.left - maskRect.left;
-            maskRectDelta.top = maxRect.top - maskRect.top;
-            maskRectDelta.right = maxRect.right - maskRect.right;
-            maskRectDelta.bottom = maxRect.bottom - maskRect.bottom;
-            maskRectDelta.width = maxRect.width - maskRect.width;
-            maskRectDelta.height = maxRect.height - maskRect.height;
-            maskRectDelta.centerX = maxRect.centerX - maskRect.centerX;
-            maskRectDelta.centerY = maxRect.centerY - maskRect.centerY;
+                const imgXY = _getCoords(_getInverse(mainCtx.getTransform()), imgRect.centerX, imgRect.centerY);
+                mainRectDelta.left = -imgXY.x;
+                mainRectDelta.top = -imgXY.y;
 
-            mainRectDelta.e = maskRectDelta.centerX;
-            mainRectDelta.f = maskRectDelta.centerY;
+            } else {
+                //画像はマスクより大きい場合：移動
+                let offsetX = 0, offsetY = 0;
+                if (imgRect.left > maskRect.left)
+                    offsetX = maskRect.left - imgRect.left;
+                if (imgRect.right < maskRect.right)
+                    offsetX = maskRect.right - imgRect.right;
+                if (imgRect.top > maskRect.top)
+                    offsetY = maskRect.top - imgRect.top;
+                if (imgRect.bottom < maskRect.bottom)
+                    offsetY = maskRect.bottom - imgRect.bottom;
+
+                mainRectDelta.e += offsetX;
+                mainRectDelta.f += offsetY;
+            }
+        }
+
+        function calculateMaskRect() {
+            const scale = Math.min(maskDumyRect.width / maskRect.width, maskDumyRect.height / maskRect.height);
+            maskMaxRect.width = maskRect.width * scale;
+            maskMaxRect.height = maskRect.height * scale;
+            maskMaxRect.centerX = maskDumyRect.centerX;
+            maskMaxRect.centerY = maskDumyRect.centerY;
+            maskMaxRect.left = maskMaxRect.centerX - maskMaxRect.width / 2;
+            maskMaxRect.top = maskMaxRect.centerY - maskMaxRect.height / 2;
+            maskMaxRect.right = maskMaxRect.centerX + maskMaxRect.width / 2;
+            maskMaxRect.bottom = maskMaxRect.centerY + maskMaxRect.height / 2;
+
+            maskRectDelta.left = maskMaxRect.left - maskRect.left;
+            maskRectDelta.top = maskMaxRect.top - maskRect.top;
+            maskRectDelta.right = maskMaxRect.right - maskRect.right;
+            maskRectDelta.bottom = maskMaxRect.bottom - maskRect.bottom;
+            maskRectDelta.width = maskMaxRect.width - maskRect.width;
+            maskRectDelta.height = maskMaxRect.height - maskRect.height;
+            maskRectDelta.centerX = maskMaxRect.centerX - maskRect.centerX;
+            maskRectDelta.centerY = maskMaxRect.centerY - maskRect.centerY;
+
+            mainRectDelta.e = maskMaxRect.centerX - mainRect.e;
+            mainRectDelta.f = maskMaxRect.centerY - mainRect.f;
             mainRectDelta.a = mainRect.a * scale - mainRect.a;
             mainRectDelta.d = mainRect.d * scale - mainRect.d;
-            mainRectDelta.imgX = -imgXY.x;
-            mainRectDelta.imgY = -imgXY.y;
+
+            const imgXY = _getCoords(_getInverse(mainCtx.getTransform()), maskRect.centerX, maskRect.centerY);
+            mainRectDelta.left = -imgXY.x;
+            mainRectDelta.top = -imgXY.y;
         }
 
-        function animateMaskRect(main, mask) {
-            if (animateRate == 0) {
-                saveDelta();
-                calculateMaskRectDelta();
-            }
+        function animateMaskRect() {
             animateRate += 1;
             rate = 1 / (1 + Math.exp(-(animateRate - 9)));
             if (rate > 0.99) {
@@ -235,6 +286,12 @@
                 updateMainCanvas();
                 updateMaskCanvas();
                 saveDelta();
+                if (controlHandlerIndex > 0) {
+                    controlHandlerIndex = 0;
+                    calculateMainRect();
+                    animateRate = 5;
+                    animateMaskRect();
+                }
             } else {
                 updateMainCanvas(rate);
                 updateMaskCanvas(rate);
@@ -242,51 +299,10 @@
             }
         }
 
-        function animateMainRect(main, mask) {
-            if (animateRate == 0) {
-                saveDelta();
-                calculateMainRectDelta();
-            }
-            animateRate += 1;
-            rate = 1 / (1 + Math.exp(-(animateRate - 9)));
-            if (rate > 0.99) {
-                animateRate = 0;
-                cancelAnimationFrame(animationId);
-                animationId = null;
-                updateMainCanvas();
-                updateMaskCanvas();
-                saveDelta();
-            } else {
-                updateMainCanvas(rate);
-                updateMaskCanvas(rate);
-                animationId = requestAnimationFrame(animateMainRect);
-            }
-        }
-
-        // function animateMainRect1(main, mask) {
-        //     if (animateRate == 0) {
-        //         saveDelta();
-        //         calculateMainRectDelta();
-        //     }
-        //     animateRate += 1;
-        //     rate = 1 / (1 + Math.exp(-(animateRate - 9)));
-        //     if (rate > 0.99) {
-        //         animateRate = 0;
-        //         cancelAnimationFrame(animationId);
-        //         animationId = null;
-        //         updateMainCanvas();
-        //         saveDelta();
-        //     } else {
-        //         updateMainCanvas(rate);
-        //         animationId = requestAnimationFrame(animateMainRect);
-        //     }
-        // }
-
         function updateMainCanvas(rate = 1) {
             // 画像：クリア
             mainCtx.save();
             mainCtx.setTransform(1, 0, 0, 1, 0, 0);
-            mainCtx.clearRect(0, 0, mainCanvas.width, mainCanvas.height);
             mainCtx.fillRect(0, 0, mainCanvas.width, mainCanvas.height);
             mainCtx.restore();
             // 画像：マトリックス設定
@@ -304,14 +320,18 @@
                 f                   //f
             );
             // 画像：描画
-            mainCtx.drawImage(img, mainRect.imgX + mainRectDelta.imgX * rate, mainRect.imgY + mainRectDelta.imgY * rate);
+            mainCtx.drawImage(img, mainRect.left + mainRectDelta.left * rate, mainRect.top + mainRectDelta.top * rate);
         }
 
         function updateMaskCanvas(rate = 1) {
             // マスク描画：クリア
             maskCtx.clearRect(0, 0, maskCanvas.width, maskCanvas.height);
             // マスク描画：無効領域
+            maskCtx.fillStyle = 'rgba(6, 6, 6, 0.6)';
             maskCtx.fillRect(0, 0, maskCanvas.width, maskCanvas.height);
+            maskCtx.clearRect(maskDumyRect.left, maskDumyRect.top, maskDumyRect.width, maskDumyRect.height);
+            maskCtx.fillStyle = 'rgba(66, 66, 66, 0.3)';
+            maskCtx.fillRect(maskDumyRect.left, maskDumyRect.top, maskDumyRect.width, maskDumyRect.height);
             // マスク描画：有効領域
             let left = maskRect.left + maskRectDelta.left * rate;
             let top = maskRect.top + maskRectDelta.top * rate;
@@ -324,7 +344,6 @@
             // 水平線
             maskCtx.setLineDash([1, 1]);
             maskCtx.lineWidth = 1;
-            maskCtx.strokeStyle = '#999';
 
             maskCtx.beginPath();
             maskCtx.moveTo(left, top + height / 3);
@@ -344,20 +363,19 @@
             // 枠
             maskCtx.setLineDash([]);
             maskCtx.lineWidth = 2;
-            maskCtx.strokeStyle = '#000';
 
             maskCtx.beginPath();
             maskCtx.moveTo(left, top);
             maskCtx.lineTo(right, top);
             maskCtx.lineTo(right, bottom);
             maskCtx.lineTo(left, bottom);
+            maskCtx.closePath();
             maskCtx.stroke();
 
             // 四角
             const cornerLength = 30;
-            const cornerOffset = 0;
-            maskCtx.lineWidth = 5;
-
+            const cornerOffset = -1;
+            maskCtx.lineWidth = 4;
             left += cornerOffset;
             right -= cornerOffset;
             top += cornerOffset;
@@ -394,25 +412,27 @@
             slidCtx.restore();
         }
 
-        function getEdgeInsideScale() {
+        function getEdgeScaleDelta() {
             const inverse = _getInverse(mainCtx.getTransform());
             const p1 = _getCoords(inverse, maskRect.left, maskRect.top);
             const p2 = _getCoords(inverse, maskRect.right, maskRect.top);
             const p3 = _getCoords(inverse, maskRect.right, maskRect.bottom);
             const p4 = _getCoords(inverse, maskRect.left, maskRect.bottom);
 
-            const left = mainRect.imgX;
-            const top = mainRect.imgY;
-            const right = mainRect.imgX + img.width;
-            const bottom = mainRect.imgY + img.height;
+            const left = mainRect.left;
+            const top = mainRect.top;
+            const right = mainRect.left + mainRect.width;
+            const bottom = mainRect.top + mainRect.height;
 
-            distanceW = Math.max(left - p1.x, left - p3.x, p2.x - right, p4.x - right);
-            distanceH = Math.max(top - p1.y, top - p2.y, p3.y - bottom, p4.y - bottom);
+            deltaWidth = Math.max(left - p1.x, left - p4.x, p2.x - right, p3.x - right);
+            deltaHeight = Math.max(top - p1.y, top - p2.y, p3.y - bottom, p4.y - bottom);
 
-            if (distanceW > distanceH) {
-                return distanceW > 0 ? (distanceW + img.width) / img.width : 1;
+            if (deltaWidth <= 0 && deltaHeight <= 0) {
+                return 0;
+            } else if (deltaWidth > deltaHeight) {
+                return (deltaWidth + mainRect.width) / mainRect.width - 1;
             } else {
-                return distanceH > 0 ? (distanceH + img.height) / img.height : 1;
+                return (deltaHeight + mainRect.height) / mainRect.height - 1;
             }
         }
 
@@ -469,7 +489,7 @@
             offsetscreenCanvas.height = arcR * 2 + 35;
 
             const offscreenCtx = offsetscreenCanvas.getContext('2d');
-            offscreenCtx.strokeStyle = 'rgba(0, 0, 0, 1)';
+            offscreenCtx.strokeStyle = 'white';
             offscreenCtx.font = '14px Arial';
 
             offscreenCtx.translate(offsetscreenCanvas.width / 2, offsetscreenCanvas.height / 2);
@@ -482,7 +502,7 @@
             const lineEnd = arcR - arcR * 0.05;
             const angle = (Math.PI - arcsin * 2) / maxAngle;
 
-            offscreenCtx.fillStyle = 'rgba(0, 0, 0, 1)';
+            offscreenCtx.fillStyle = 'white';
             offscreenCtx.rotate(-Math.PI / 2);
             offscreenCtx.rotate(arcsin);
             offscreenCtx.beginPath();
@@ -496,22 +516,6 @@
             offscreenCtx.stroke();
 
             return { clientX: arcX, clientY: arcY };
-        }
-
-        function _getCanvasMaxRect(canvas, rect) {
-            const scale = Math.min(canvas.width / rect.width, canvas.height / rect.height);
-            const maxCenterX = canvas.width / 2;
-            const maxCenterY = canvas.height / 2;
-            const maxRect = {};
-            maxRect.left = maxCenterX - rect.width * scale / 2;
-            maxRect.top = maxCenterY - rect.height * scale / 2;
-            maxRect.right = maxCenterX + rect.width * scale / 2;
-            maxRect.bottom = maxCenterY + rect.height * scale / 2;
-            maxRect.width = maxRect.right - maxRect.left;
-            maxRect.height = maxRect.bottom - maxRect.top;
-            maxRect.centerX = maxCenterX;
-            maxRect.centerY = maxCenterY;
-            return maxRect;
         }
 
         function _getInverse(m) {
@@ -602,11 +606,11 @@
                             maskRect.top += maskRect.bottom - (maskRect.top + F) > 30 ? F : 0;
                             break;
                         case 2:
-                            maskRect.right += maskRectDelta.right + E - maskRect.left > 30 ? E : 0;;
+                            maskRect.right += maskRect.right + E - maskRect.left > 30 ? E : 0;;
                             maskRect.top += maskRect.bottom - (maskRect.top + F) > 30 ? F : 0;
                             break;
                         case 3:
-                            maskRect.right += maskRectDelta.right + E - maskRect.left > 30 ? E : 0;;
+                            maskRect.right += maskRect.right + E - maskRect.left > 30 ? E : 0;;
                             maskRect.bottom += maskRect.bottom + F - maskRect.top > 30 ? F : 0;
                             break;
                         case 4:
@@ -614,6 +618,15 @@
                             maskRect.bottom += maskRect.bottom + F - maskRect.top > 30 ? F : 0;
                             break;
                     }
+                    if (maskRect.left < maskDumyRect.left)
+                        maskRect.left = maskDumyRect.left
+                    else if (maskRect.right > maskDumyRect.right)
+                        maskRect.right = maskDumyRect.right
+
+                    if (maskRect.top < maskDumyRect.top)
+                        maskRect.top = maskDumyRect.top
+                    else if (maskRect.bottom > maskDumyRect.bottom)
+                        maskRect.bottom = maskDumyRect.bottom
 
                     maskRect.width = maskRect.right - maskRect.left;
                     maskRect.height = maskRect.bottom - maskRect.top;
@@ -651,8 +664,8 @@
 
                 mainRect.e = centerX;
                 mainRect.f = centerY;
-                mainRect.imgX = mainRect.imgX - drawXY.x;
-                mainRect.imgY = mainRect.imgY - drawXY.y;
+                mainRect.left = mainRect.left - drawXY.x;
+                mainRect.top = mainRect.top - drawXY.y;
 
                 mainRect.e += E;
                 mainRect.f += F;
@@ -669,10 +682,11 @@
             e.preventDefault();
 
             if (controlHandlerIndex > 0) {
-                controlHandlerIndex = 0;
+                calculateMaskRect();
                 animateMaskRect();
             } else {
-                animateMainRect();
+                calculateMainRect();
+                animateMaskRect();
             }
 
             isDragging = false;
@@ -697,8 +711,8 @@
 
             mainRect.e = centerX;
             mainRect.f = centerY;
-            mainRect.imgX = mainRect.imgX - drawXY.x;
-            mainRect.imgY = mainRect.imgY - drawXY.y;
+            mainRect.left = mainRect.left - drawXY.x;
+            mainRect.top = mainRect.top - drawXY.y;
 
             let A = 0, D = 0;
             if (e.deltaY < 0) {
@@ -711,9 +725,9 @@
 
             let RAD = 0;
             if (e.deltaX < 0) {
-                RAD = Math.PI / 180;
+                RAD = Math.PI / 180 * 0.1;
             } else if (e.deltaX > 0) {
-                RAD = -Math.PI / 180;
+                RAD = -Math.PI / 180 * 0.1;
             }
 
             mainRect.a += A;
@@ -740,8 +754,8 @@
 
             mainRect.e = centerX;
             mainRect.f = centerY;
-            mainRect.imgX = mainRect.imgX - drawXY.x;
-            mainRect.imgY = mainRect.imgY - drawXY.y;
+            mainRect.left = mainRect.left - drawXY.x;
+            mainRect.top = mainRect.top - drawXY.y;
 
             tmp.preAngle = _getAngle(e.touches[0], slidCenterTouch);
 
@@ -757,7 +771,7 @@
 
             let A = 0, D = 0, RAD = 0;
 
-            A = getEdgeInsideScale() - 1;
+            A = getEdgeScaleDelta();
             D = A;
             RAD = touchAngle - tmp.preAngle;
 
@@ -792,31 +806,41 @@
         img.crossOrigin = "Anonymous";
         img.src = 'https://tyoukou.github.io/test/1.jpg';
         img.onload = function () {
-            mainRect = { a: 1, d: 1, e: 0, f: 0, rad: 0, imgX: 0, imgY: 0 };
-            mainRectDelta = { a: 0, d: 0, e: 0, f: 0, rad: 0, imgX: 0, imgY: 0 };
+            mainRect = { left: 0, top: 0, width: 0, height: 0, a: 1, d: 1, e: 0, f: 0, rad: 0 };
+            mainRectDelta = { left: 0, top: 0, width: 0, height: 0, a: 0, d: 0, e: 0, f: 0, rad: 0 };
             maskRect = { left: 0, top: 0, right: 0, bottom: 0, width: 0, height: 0, centerX: 0, centerY: 0 };
             maskRectDelta = { left: 0, top: 0, right: 0, bottom: 0, width: 0, height: 0, centerX: 0, centerY: 0 };
+            maskMaxRect = { left: 0, top: 0, right: 0, bottom: 0, width: 0, height: 0, centerX: 0, centerY: 0 };
+            imgRect = { left: 0, top: 0, right: 0, bottom: 0, width: 0, height: 0, centerX: 0, centerY: 0 };
 
-            const scale = Math.min(mainCanvas.width / img.width, mainCanvas.height / img.height);
-            mainRect.imgX = -img.width / 2;
-            mainRect.imgY = -img.height / 2;
-            mainRect.e = mainCanvas.width / 2;
-            mainRect.f = mainCanvas.height / 2;
+            maskDumyRect.right = maskDumyRect.left + maskDumyRect.width;
+            maskDumyRect.bottom = maskDumyRect.top + maskDumyRect.height;
+            maskDumyRect.centerX = (maskDumyRect.right + maskDumyRect.left) / 2;
+            maskDumyRect.centerY = (maskDumyRect.bottom + maskDumyRect.top) / 2;
+
+            const scale = Math.max(maskDumyRect.width / img.width, maskDumyRect.height / img.height);
+            mainRect.width = img.width;
+            mainRect.height = img.height;
+            mainRect.left = -img.width / 2;
+            mainRect.top = -img.height / 2;
+            mainRect.e = maskDumyRect.centerX;
+            mainRect.f = maskDumyRect.centerY;
             mainRect.a = scale;
             mainRect.d = scale;
             updateMainCanvas();
 
-            slidCenterTouch = _drawOfstCanvas(ofstCanvas, container.clientWidth);
+            slidCenterTouch = _drawOfstCanvas(ofstCanvas, content.clientWidth);
             updateSlidCanvas();
 
-            maskRect.width = Math.min(img.width * scale, mainCanvas.width);
-            maskRect.height = Math.min(img.height * scale, mainCanvas.height);
-            maskRect.left = (maskCanvas.width - maskRect.width) / 2;
-            maskRect.top = (maskCanvas.height - maskRect.height) / 2;
-            maskRect.right = maskRect.left + maskRect.width;
-            maskRect.bottom = maskRect.top + maskRect.height;
-            maskRect.centerX = (maskRect.left + maskRect.right) / 2;
-            maskRect.centerY = (maskRect.bottom + maskRect.top) / 2;
+            maskRect.centerX = maskDumyRect.centerX;
+            maskRect.centerY = maskDumyRect.centerY;
+            maskRect.width = Math.min(img.width * scale, maskDumyRect.width);
+            maskRect.height = Math.min(img.height * scale, maskDumyRect.height);
+            maskRect.left = maskRect.centerX - maskRect.width / 2;
+            maskRect.top = maskRect.centerY - maskRect.height / 2;
+            maskRect.right = maskRect.centerX + maskRect.width / 2;
+            maskRect.bottom = maskRect.centerY + maskRect.height / 2;
+
             updateMaskCanvas();
 
         };
