@@ -627,16 +627,10 @@
 
         }
 
-        function _getDistance(touch1, touch2) {
-            const dx = touch2.clientX - touch1.clientX;
-            const dy = touch2.clientY - touch1.clientY;
+        function _getDistance(touch1, x, y) {
+            const dx = x - touch1.clientX;
+            const dy = y - touch1.clientY;
             return Math.sqrt(dx * dx + dy * dy);
-        }
-
-        function _getAngle(touch1, touch2) {
-            const dx = touch2.clientX - touch1.clientX;
-            const dy = touch2.clientY - touch1.clientY;
-            return Math.atan2(dy, dx);
         }
 
         function _getAngle(touch1, x, y) {
@@ -674,13 +668,12 @@
             } else if (e.touches.length == 2) {
                 touch.preX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
                 touch.preY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
-                touch.preDistance = _getDistance(e.touches[0], e.touches[1]);
-                touch.preAngle = _getAngle(e.touches[0], e.touches[1]);
+                touch.preDistance = _getDistance(e.touches[0], e.touches[1].clientX, e.touches[1].clientY);
+                touch.preAngle = _getAngle(e.touches[0], e.touches[1].clientX, e.touches[1].clientY);
             }
 
 
         });
-
         maskCanvas.addEventListener('touchmove', function (e) {
             e.preventDefault();
             e.stopPropagation();
@@ -762,7 +755,7 @@
             } else if (e.touches.length == 2) {
                 const touchX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
                 const touchY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
-                
+
                 const rect = maskCanvas.getBoundingClientRect();
                 const centerX = touchX - rect.left;
                 const centerY = touchY - rect.top;
@@ -778,12 +771,12 @@
                 mainRect.e += E;
                 mainRect.f += F;
 
-                const touchDistance = _getDistance(e.touches[0], e.touches[1]);
+                const touchDistance = _getDistance(e.touches[0], e.touches[1].clientX, e.touches[1].clientY);
                 S = (touchDistance - touch.preDistance) / touch.preDistance;
                 mainRect.a += S;
                 mainRect.d += S;
 
-                const touchAngle = _getAngle(e.touches[0], e.touches[1]);
+                const touchAngle = _getAngle(e.touches[0], e.touches[1].clientX, e.touches[1].clientY);
                 R = touchAngle - touch.preAngle;
                 mainRect.rad += R;
 
@@ -804,7 +797,7 @@
         });
 
         maskCanvas.addEventListener('touchcancel', function (e) {
-            e.preventDefault();
+            // e.preventDefault();
             e.stopPropagation();
             animate();
         });
