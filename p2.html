@@ -762,19 +762,7 @@
             } else if (e.touches.length == 2) {
                 const touchX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
                 const touchY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
-                const touchDistance = _getDistance(e.touches[0], e.touches[1]);
-                const touchAngle = _getAngle(e.touches[0], e.touches[1]);
-
-                E = touchX - touch.preX;
-                F = touchY - touch.preY;
-                S = (touchDistance - touch.preDistance) / touch.preDistance;
-                R = touchAngle - touch.preAngle;
-
-                touch.preX = touchX;
-                touch.preY = touchY;
-                touch.preDistance = touchDistance;
-                touch.preAngle = touchAngle;
-
+                
                 const rect = maskCanvas.getBoundingClientRect();
                 const centerX = touchX - rect.left;
                 const centerY = touchY - rect.top;
@@ -785,11 +773,24 @@
                 mainRect.left = mainRect.left - drawXY.x;
                 mainRect.top = mainRect.top - drawXY.y;
 
+                E = touchX - touch.preX;
+                F = touchY - touch.preY;
                 mainRect.e += E;
                 mainRect.f += F;
+
+                const touchDistance = _getDistance(e.touches[0], e.touches[1]);
+                S = (touchDistance - touch.preDistance) / touch.preDistance;
                 mainRect.a += S;
                 mainRect.d += S;
+
+                const touchAngle = _getAngle(e.touches[0], e.touches[1]);
+                R = touchAngle - touch.preAngle;
                 mainRect.rad += R;
+
+                touch.preX = touchX;
+                touch.preY = touchY;
+                touch.preDistance = touchDistance;
+                touch.preAngle = touchAngle;
 
                 updateMainCanvas();
             }
