@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -665,8 +666,9 @@
                 }
 
             } else if (e.touches.length == 2) {
-                touch.preX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
-                touch.preY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+                const rect = maskCanvas.getBoundingClientRect();
+                touch.preX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
+                touch.preY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
                 touch.preDistance = _getDistance(e.touches[0], e.touches[1].clientX, e.touches[1].clientY);
                 // touch.preAngle = _getAngle(e.touches[0], e.touches[1].clientX, e.touches[1].clientY);
             }
