@@ -754,16 +754,13 @@
                 }
 
             } else if (e.touches.length == 2) {
-                const touchX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
-                const touchY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
-
                 const rect = maskCanvas.getBoundingClientRect();
-                const centerX = touchX - rect.left;
-                const centerY = touchY - rect.top;
-                const drawXY = _getCoords(_getInverse(mainCtx.getTransform()), centerX, centerY);
+                const touchX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
+                const touchY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
+                const drawXY = _getCoords(_getInverse(mainCtx.getTransform()), touchX, touchY);
 
-                mainRect.e = centerX;
-                mainRect.f = centerY;
+                mainRect.e = touchX;
+                mainRect.f = touchY;
                 mainRect.left = mainRect.left - drawXY.x;
                 mainRect.top = mainRect.top - drawXY.y;
 
