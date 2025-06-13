@@ -752,6 +752,23 @@
             } else if (e.touches.length == 2) {
                 const touchX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - touch.canvasLeft;
                 const touchY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - touch.canvasTop;
+                E = touchX - touch.preX;
+                F = touchY - touch.preY;
+                touch.preX = touchX;
+                touch.preY = touchY;
+                mainRect.e += E;
+                mainRect.f += F;
+
+                const touchDistance = _getDistance(e.touches[0], e.touches[1].clientX, e.touches[1].clientY);
+                S = (touchDistance - touch.preDistance) / touch.preDistance;
+                touch.preDistance = touchDistance;
+                mainRect.a += S;
+                mainRect.d += S;
+
+                // const touchAngle = _getAngle(e.touches[0], e.touches[1].clientX, e.touches[1].clientY);
+                // R = touchAngle - touch.preAngle;
+                // mainRect.rad += R;
+                // touch.preAngle = touchAngle;
 
                 const centerX = touchX - touch.canvasLeft;
                 const centerY = touchY - touch.canvasTop;
@@ -760,25 +777,6 @@
                 mainRect.f = centerY;
                 mainRect.left += -imgXY.x;
                 mainRect.top += -imgXY.y;
-
-                E = touchX - touch.preX;
-                F = touchY - touch.preY;
-                mainRect.e += E;
-                mainRect.f += F;
-
-                const touchDistance = _getDistance(e.touches[0], e.touches[1].clientX, e.touches[1].clientY);
-                S = (touchDistance - touch.preDistance) / touch.preDistance;
-                mainRect.a += S;
-                mainRect.d += S;
-
-                // const touchAngle = _getAngle(e.touches[0], e.touches[1].clientX, e.touches[1].clientY);
-                // R = touchAngle - touch.preAngle;
-                // mainRect.rad += R;
-
-                touch.preX = touchX;
-                touch.preY = touchY;
-                touch.preDistance = touchDistance;
-                // touch.preAngle = touchAngle;
 
                 mainRect.a = Math.min(mainRect.a, touch.scaleMax);
                 mainRect.a = Math.max(mainRect.a, touch.scaleMin);
@@ -805,21 +803,14 @@
             e.preventDefault();
             e.stopPropagation();
 
-            const centerX = e.clientX - touch.canvasLeft;
-            const centerY = e.clientY - touch.canvasTop;
-            const imgXY = _getCoords(_getInverse(mainCtx.getTransform()), centerX, centerY);
-
-            mainRect.e = centerX;
-            mainRect.f = centerY;
-            mainRect.left += -imgXY.x;
-            mainRect.top += -imgXY.y;
-
             let S = 0;
             if (e.deltaY < 0) {
                 S += 0.03;
             } else if (e.deltaY > 0) {
                 S -= 0.03;
             }
+            mainRect.a += S;
+            mainRect.d += S;
 
             let R = 0;
             if (e.deltaX < 0) {
@@ -827,10 +818,15 @@
             } else if (e.deltaX > 0) {
                 R = -Math.PI / 180 * 0.1;
             }
-
-            mainRect.a += S;
-            mainRect.d += S;
             mainRect.rad += R;
+
+            const centerX = e.clientX - touch.canvasLeft;
+            const centerY = e.clientY - touch.canvasTop;
+            const imgXY = _getCoords(_getInverse(mainCtx.getTransform()), centerX, centerY);
+            mainRect.e = centerX;
+            mainRect.f = centerY;
+            mainRect.left += -imgXY.x;
+            mainRect.top += -imgXY.y;
 
             mainRect.rad = Math.min(mainRect.rad, touch.angleMax);
             mainRect.rad = Math.max(mainRect.rad, touch.angleMin);
