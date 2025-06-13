@@ -253,9 +253,8 @@
 
         function calculateHandlerIndex(screenX, screenY) {
             const touchRadius = 30;
-            const rect = maskCanvas.getBoundingClientRect();
-            const x = screenX - rect.left;
-            const y = screenY - rect.top;
+            const x = screenX - touch.canvasLeft;
+            const y = screenY - touch.canvasTop;
 
             if (Math.abs(maskRect.left - x) < touchRadius) {
                 if (Math.abs(maskRect.top - y) < touchRadius) {
@@ -654,11 +653,11 @@
                 touch.isHandlering = touch.handler > 0;
                 if (e.touches[0].clientY < maskDumyRect.top + 60 || e.touches[0].clientY > maskDumyRect.bottom + 60) {
                     touch.isRotating = true;
-                    const drawXY = _getCoords(_getInverse(mainCtx.getTransform()), maskRect.centerX, maskRect.centerY);
+                    const imgXY = _getCoords(_getInverse(mainCtx.getTransform()), maskRect.centerX, maskRect.centerY);
                     mainRect.e = maskRect.centerX;
                     mainRect.f = maskRect.centerY;
-                    mainRect.left = mainRect.left - drawXY.x;
-                    mainRect.top = mainRect.top - drawXY.y;
+                    mainRect.left = mainRect.left - imgXY.x;
+                    mainRect.top = mainRect.top - imgXY.y;
 
                     updateMainCanvas();
 
@@ -737,10 +736,8 @@
 
                     touch.preAngle = touchAngle;
 
-                    if (mainRect.rad < touch.angleMin)
-                        mainRect.rad = touch.angleMin;
-                    if (mainRect.rad > touch.angleMax)
-                        mainRect.rad = touch.angleMax;
+                    mainRect.rad = Math.min(mainRect.rad, touch.angleMax);
+                    mainRect.rad = Math.max(mainRect.rad, touch.angleMin);
 
                     updateMainCanvas();
                     updateSlidCanvas();
@@ -753,12 +750,14 @@
                 }
 
             } else if (e.touches.length == 2) {
-                const touchX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
-                const touchY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
-                const imgXY = _getCoords(_getInverse(mainCtx.getTransform()), touchX - touch.canvasLeft, touchY - touch.canvasTop);
+                const touchX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - touch.canvasLeft;
+                const touchY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - touch.canvasTop;
 
-                mainRect.e = imgXY.x;
-                mainRect.f = imgXY.y;
+                const centerX = touchX - touch.canvasLeft;
+                const centerY = touchY - touch.canvasTop;
+                const imgXY = _getCoords(_getInverse(mainCtx.getTransform()), centerX, centerY);
+                mainRect.e = centerX;
+                mainRect.f = centerY;
                 mainRect.left += -imgXY.x;
                 mainRect.top += -imgXY.y;
 
@@ -768,11 +767,10 @@
                 mainRect.f += F;
 
                 const touchDistance = _getDistance(e.touches[0], e.touches[1].clientX, e.touches[1].clientY);
-                S = Math.min;
+                S = (touchDistance - touch.preDistance) / touch.preDistance;
                 mainRect.a += S;
                 mainRect.d += S;
-                mainRect.a = Math.max(mainRect.a, touch.scaleMin);
-                mainRect.d = Math.max(mainRect.d, touch.scaleMin);
+
                 // const touchAngle = _getAngle(e.touches[0], e.touches[1].clientX, e.touches[1].clientY);
                 // R = touchAngle - touch.preAngle;
                 // mainRect.rad += R;
@@ -782,6 +780,10 @@
                 touch.preDistance = touchDistance;
                 // touch.preAngle = touchAngle;
 
+                mainRect.a = Math.min(mainRect.a, touch.scaleMax);
+                mainRect.a = Math.max(mainRect.a, touch.scaleMin);
+                mainRect.d = Math.min(mainRect.d, touch.scaleMax);
+                mainRect.d = Math.max(mainRect.d, touch.scaleMin);
                 updateMainCanvas();
             }
 
@@ -803,15 +805,14 @@
             e.preventDefault();
             e.stopPropagation();
 
-            const rect = maskCanvas.getBoundingClientRect();
-            const centerX = e.clientX - rect.left;
-            const centerY = e.clientY - rect.top;
-            const drawXY = _getCoords(_getInverse(mainCtx.getTransform()), centerX, centerY);
+            const centerX = e.clientX - touch.canvasLeft;
+            const centerY = e.clientY - touch.canvasTop;
+            const imgXY = _getCoords(_getInverse(mainCtx.getTransform()), centerX, centerY);
 
             mainRect.e = centerX;
             mainRect.f = centerY;
-            mainRect.left = mainRect.left - drawXY.x;
-            mainRect.top = mainRect.top - drawXY.y;
+            mainRect.left += -imgXY.x;
+            mainRect.top += -imgXY.y;
 
             let S = 0;
             if (e.deltaY < 0) {
@@ -831,6 +832,12 @@
             mainRect.d += S;
             mainRect.rad += R;
 
+            mainRect.rad = Math.min(mainRect.rad, touch.angleMax);
+            mainRect.rad = Math.max(mainRect.rad, touch.angleMin);
+            mainRect.a = Math.min(mainRect.a, touch.scaleMax);
+            mainRect.a = Math.max(mainRect.a, touch.scaleMin);
+            mainRect.d = Math.min(mainRect.d, touch.scaleMax);
+            mainRect.d = Math.max(mainRect.d, touch.scaleMin);
             updateMainCanvas();
         });
 
@@ -851,7 +858,7 @@
             maskDumyRect = { left: 0, top: 0, right: 0, bottom: 0, width: 0, height: 0, centerX: 0, centerY: 0 };
             slidRect = { left: 0, top: 0, width: 0, height: 0, a: 1, d: 1, e: 0, f: 0, rad: 0 };
             slidRectDelta = { left: 0, top: 0, width: 0, height: 0, a: 0, d: 0, e: 0, f: 0, rad: 0 };
-            touch = { isDragging: false, isRotating: false, angleMax: Math.PI / 180 * 10, angleMin: -Math.PI / 180 * 10, scaleMin: 1, scaleMax: 1, canvasLeft: 0, canvasTop: 0 };
+            touch = { isDragging: false, isRotating: false, angleMax: Math.PI / 180 * 10, angleMin: -Math.PI / 180 * 10, scaleMin: 0.5, scaleMax: 2, canvasLeft: 0, canvasTop: 0 };
 
             const contentRect = content.getBoundingClientRect();
             maskDumyRect.width = Math.min(contentRect.width, contentRect.height) * 0.9;
@@ -898,8 +905,8 @@
             content_btn.style.top = `${maskDumyRect.top - 30}px`;
 
             const rect = mainCanvas.getBoundingClientRect();
-            touch.scaleMax = scale * 2;
-            touch.scaleMin = scale * 0.5;
+            touch.scaleMax *= scale;
+            touch.scaleMin *= scale;
             touch.canvasLeft = rect.left;
             touch.canvasTop = rect.top;
         };
