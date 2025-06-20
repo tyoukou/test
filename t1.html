@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Log Event Demo</title>
+  <style>
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background-color: #f0f0f0;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 5px;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+  </style>
+</head>
+<body>
+  <button onclick="triggerLogEvent()">Log Event</button>
+
+  <script>
+    function logEvent(name, params) {
+      if (!name) {
+        return;
+      }
+
+      if (window.AnalyticsWebInterface) {
+        // Call Android interface
+        window.AnalyticsWebInterface.logEvent(name, JSON.stringify(params));
+      } else if (window.webkit
+          && window.webkit.messageHandlers
+          && window.webkit.messageHandlers.firebase) {
+        // Call iOS interface
+        var message = {
+          command: 'logEvent',
+          name: name,
+          parameters: params
+        };
+        window.webkit.messageHandlers.firebase.postMessage(message);
+      } else {
+        // No Android or iOS interface found
+        console.log("No native APIs found.");
+      }
+    }
+
+    // Function to trigger logEvent with sample data
+    function triggerLogEvent() {
+      const eventName = "button_click";
+      const eventParams = {
+        button_id: "log_button",
+        timestamp: new Date().toISOString()
+      };
+      console.log("Logging event:", eventName, eventParams); // For debugging
+      logEvent(eventName, eventParams);
+    }
+  </script>
+</body>
+</html>
